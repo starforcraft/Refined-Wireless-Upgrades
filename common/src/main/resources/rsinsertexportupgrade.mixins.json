@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.ultramega.rsinsertexportupgrade.common.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": [
+    "AbstractNetworkEnergyItemMixin",
+    "AbstractGridContainerMenuMixin",
+    "InventorySlotReferenceAccessor",
+    "WirelessGridContainerMenuMixin",
+    "WirelessCraftingGridContainerMenuMixin"
+  ],
+  "client": [
+    "MixinAbstractGridScreen"
+  ]
+}

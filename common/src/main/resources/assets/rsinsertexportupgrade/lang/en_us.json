@@ -1,0 +1,14 @@
+{
+	"itemGroup.rsinsertexportupgrade": "RS Insert Export Upgrade",
+	"item.rsinsertexportupgrade.insert_upgrade": "Insert Upgrade",
+	"item.rsinsertexportupgrade.insert_upgrade.help": "Takes resources in specific slots of your inventory and dumps them into your network.",
+	"item.rsinsertexportupgrade.export_upgrade": "Export Upgrade",
+	"item.rsinsertexportupgrade.export_upgrade.help": "Pulls specific resources from your network into your inventory.",
+	"sidebutton.rsinsertexportupgrade.open_upgrade": "Open %s",
+	"text.autoconfig.rsinsertexportupgrade.option.upgrade.insertUpgradeEnergyUsage": "Insert Upgrade energy usage",
+	"text.autoconfig.rsinsertexportupgrade.option.upgrade.insertUpgradeEnergyUsage.tooltip": "The energy used per operation the Insert Upgrade does.",
+	"text.autoconfig.rsinsertexportupgrade.option.upgrade.exportUpgradeEnergyUsage": "Export Upgrade energy usage",
+	"text.autoconfig.rsinsertexportupgrade.option.upgrade.exportUpgradeEnergyUsage.tooltip": "The energy used per operation the Export Upgrade does.",
+	"gui.rsinsertexportupgrade.filter_mode.allow_help": "Only items matching the configured filter are inserted.",
+	"gui.rsinsertexportupgrade.filter_mode.block_help": "Items matching the configured filter are excluded from insertion."
+}

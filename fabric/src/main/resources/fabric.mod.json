@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "id": "rsinsertexportupgrade",
+  "version": "${version}",
+  "name": "RS Insert Export Upgrade",
+  "description": "Adds an Insert and Export Upgrade which can be installed into any Wireless Grid.",
+  "authors": [
+    "Ultramega"
+  ],
+  "contact": {
+    "sources": "https://github.com/starforcraft/RS-Insert-Export-Upgrade",
+    "issues": "https://github.com/starforcraft/RS-Insert-Export-Upgrade/issues"
+  },
+  "icon": "logo.png",
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.ultramega.rsinsertexportupgrade.fabric.ModInitializerImpl"
+    ],
+    "client": [
+      "com.ultramega.rsinsertexportupgrade.fabric.ClientModInitializerImpl"
+    ],
+    "refinedstorage_plugin": [
+      "com.ultramega.rsinsertexportupgrade.fabric.ModInitializerImpl"
+    ],
+    "jei_mod_plugin": [
+      "com.ultramega.rsinsertexportupgrade.common.compat.jei.JeiModPlugin"
+    ]
+  },
+  "custom": {
+    "modmenu": {
+      "links": {
+        "modmenu.discord": "https://discord.gg/WpUmcmUayN"
+      },
+      "parent": "refinedstorage"
+    }
+  },
+  "mixins": [
+    "rsinsertexportupgrade.mixins.json"
+  ],
+  "accessWidener": "rsinsertexportupgrade.accesswidener",
+  "depends": {
+    "fabricloader": ">=0.14.6",
+    "fabric-api": "*",
+    "minecraft": "~1.21.1",
+    "refinedstorage": ">=2.0.9",
+    "java": ">=21",
+    "cloth-config2": "*",
+    "team_reborn_energy": "*"
+  },
+  "suggests": {
+    "modmenu": "*"
+  }
+}
