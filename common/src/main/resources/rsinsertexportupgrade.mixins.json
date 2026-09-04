@@ -11,6 +11,7 @@
     "WirelessCraftingGridContainerMenuMixin"
   ],
   "client": [
-    "MixinAbstractGridScreen"
+    "MinecraftMixin",
+    "AbstractGridScreenMixin"
   ]
 }

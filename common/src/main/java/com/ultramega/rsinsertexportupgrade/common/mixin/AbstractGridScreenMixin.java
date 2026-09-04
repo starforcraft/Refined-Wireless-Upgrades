@@ -1,10 +1,14 @@
 package com.ultramega.rsinsertexportupgrade.common.mixin;
 
+import com.ultramega.rsinsertexportupgrade.common.menu.UpgradeConfiguration;
 import com.ultramega.rsinsertexportupgrade.common.network.OpenUpgradePayload;
+import com.ultramega.rsinsertexportupgrade.common.network.UpdateBlockPickerAmountPayload;
 import com.ultramega.rsinsertexportupgrade.common.registry.Items;
 import com.ultramega.rsinsertexportupgrade.common.screen.UpgradeScreenNavigation;
+import com.ultramega.rsinsertexportupgrade.common.screen.widget.BlockPickerAmountSideButtonWidget;
 import com.ultramega.rsinsertexportupgrade.common.screen.widget.UpgradeSideButtonWidget;
 import com.ultramega.rsinsertexportupgrade.common.util.IGridUpgrade;
+import com.ultramega.rsinsertexportupgrade.common.util.UpgradeSideButtonType;
 import com.ultramega.rsinsertexportupgrade.common.util.UpgradeSlotsExtraAreaProvider;
 import com.ultramega.rsinsertexportupgrade.common.util.UpgradeType;
 
@@ -24,8 +28,11 @@ import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Item;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -34,7 +41,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import static com.ultramega.rsinsertexportupgrade.common.util.InsertExportIdentifierUtil.createInsertExportIdentifier;
 
 @Mixin(AbstractGridScreen.class)
-public abstract class MixinAbstractGridScreen<T extends AbstractGridContainerMenu> extends AbstractStretchingScreen<T> implements UpgradeSlotsExtraAreaProvider {
+public abstract class AbstractGridScreenMixin<T extends AbstractGridContainerMenu> extends AbstractStretchingScreen<T> implements UpgradeSlotsExtraAreaProvider {
     @Unique
     private static final ResourceLocation UPGRADE_SLOTS = createInsertExportIdentifier("upgrade_slots");
 
@@ -45,12 +52,19 @@ public abstract class MixinAbstractGridScreen<T extends AbstractGridContainerMen
     @Unique
     private static final int UPGRADE_SLOTS_HEIGHT = 46;
 
+    @Shadow
+    @Final
+    private Inventory playerInventory;
+
     @Unique
     @Nullable
     private UpgradeSideButtonWidget insertExport$insertUpgradeSideButtonWidget;
     @Unique
     @Nullable
     private UpgradeSideButtonWidget insertExport$exportUpgradeSideButtonWidget;
+    @Unique
+    @Nullable
+    private BlockPickerAmountSideButtonWidget insertExport$blockPickerAmountSideButtonWidget;
 
     @Unique
     @Nullable
@@ -58,11 +72,14 @@ public abstract class MixinAbstractGridScreen<T extends AbstractGridContainerMen
     @Unique
     @Nullable
     private Rect2i insertExport$exportUpgradeSideButtonExclusionZone;
+    @Unique
+    @Nullable
+    private Rect2i insertExport$blockPickerAmountSideButtonExclusionZone;
 
     @Unique
     private boolean insertExport$sideButtonsInitialized;
 
-    protected MixinAbstractGridScreen(final T menu,
+    protected AbstractGridScreenMixin(final T menu,
                                       final Inventory playerInventory,
                                       final TextMarquee title) {
         super(menu, playerInventory, title);
@@ -102,8 +119,10 @@ public abstract class MixinAbstractGridScreen<T extends AbstractGridContainerMen
 
         this.insertExport$insertUpgradeSideButtonWidget = null;
         this.insertExport$exportUpgradeSideButtonWidget = null;
+        this.insertExport$blockPickerAmountSideButtonWidget = null;
         this.insertExport$insertUpgradeSideButtonExclusionZone = null;
         this.insertExport$exportUpgradeSideButtonExclusionZone = null;
+        this.insertExport$blockPickerAmountSideButtonExclusionZone = null;
         this.insertExport$sideButtonsInitialized = false;
     }
 
@@ -120,6 +139,7 @@ public abstract class MixinAbstractGridScreen<T extends AbstractGridContainerMen
         }
         final boolean insertUpgradeInstalled = this.insertExport$isUpgradeInstalled(Items.INSTANCE.getInsertUpgrade());
         final boolean exportUpgradeInstalled = this.insertExport$isUpgradeInstalled(Items.INSTANCE.getExportUpgrade());
+        final boolean blockPickerUpgradeInstalled = this.insertExport$isUpgradeInstalled(Items.INSTANCE.getBlockPickerUpgrade());
 
         if (insertUpgradeInstalled && this.insertExport$insertUpgradeSideButtonWidget == null) {
             this.insertExport$insertUpgradeSideButtonWidget = new UpgradeSideButtonWidget(
@@ -145,6 +165,23 @@ public abstract class MixinAbstractGridScreen<T extends AbstractGridContainerMen
             this.insertExport$exportUpgradeSideButtonWidget = null;
         }
 
+        if (blockPickerUpgradeInstalled && this.insertExport$blockPickerAmountSideButtonWidget == null) {
+            this.insertExport$blockPickerAmountSideButtonWidget = new BlockPickerAmountSideButtonWidget(
+                this::insertExport$getBlockPickerAmount,
+                amount -> Platform.INSTANCE.sendPacketToServer(new UpdateBlockPickerAmountPayload(
+                    this.getMenu().containerId,
+                    amount
+                )),
+                this,
+                this.playerInventory
+            );
+            this.insertExport$blockPickerAmountSideButtonWidget.visible = true;
+            this.addRenderableWidget(this.insertExport$blockPickerAmountSideButtonWidget);
+        } else if (!blockPickerUpgradeInstalled && this.insertExport$blockPickerAmountSideButtonWidget != null) {
+            this.removeWidget(this.insertExport$blockPickerAmountSideButtonWidget);
+            this.insertExport$blockPickerAmountSideButtonWidget = null;
+        }
+
         this.insertExport$layoutSideButtons();
     }
 
@@ -157,32 +194,47 @@ public abstract class MixinAbstractGridScreen<T extends AbstractGridContainerMen
             if (child instanceof AbstractSideButtonWidget sideButton
                 && sideButton != this.insertExport$insertUpgradeSideButtonWidget
                 && sideButton != this.insertExport$exportUpgradeSideButtonWidget
+                && sideButton != this.insertExport$blockPickerAmountSideButtonWidget
                 && sideButton.visible) {
                 nextY = Math.max(nextY, sideButton.getY() + sideButton.getHeight() + 2);
             }
         }
 
         if (this.insertExport$insertUpgradeSideButtonWidget != null) {
-            nextY = this.insertExport$positionSideButton(this.insertExport$insertUpgradeSideButtonWidget, nextY, true);
-
+            nextY = this.insertExport$positionSideButton(
+                this.insertExport$insertUpgradeSideButtonWidget,
+                nextY,
+                UpgradeSideButtonType.INSERT
+            );
         }
         if (this.insertExport$exportUpgradeSideButtonWidget != null) {
-            this.insertExport$positionSideButton(this.insertExport$exportUpgradeSideButtonWidget, nextY, false);
+            nextY = this.insertExport$positionSideButton(
+                this.insertExport$exportUpgradeSideButtonWidget,
+                nextY,
+                UpgradeSideButtonType.EXPORT
+            );
+        }
+        if (this.insertExport$blockPickerAmountSideButtonWidget != null) {
+            this.insertExport$positionSideButton(
+                this.insertExport$blockPickerAmountSideButtonWidget,
+                nextY,
+                UpgradeSideButtonType.BLOCK_PICKER_AMOUNT
+            );
         }
     }
 
     @Unique
-    private int insertExport$positionSideButton(final UpgradeSideButtonWidget button,
+    private int insertExport$positionSideButton(final AbstractSideButtonWidget button,
                                                 final int y,
-                                                final boolean insert) {
+                                                final UpgradeSideButtonType type) {
         button.setX(this.getSideButtonX());
         button.setY(y);
         final Rect2i exclusionZone = new Rect2i(button.getX(), button.getY(), button.getWidth(), button.getHeight());
         this.getExclusionZones().add(exclusionZone);
-        if (insert) {
-            this.insertExport$insertUpgradeSideButtonExclusionZone = exclusionZone;
-        } else {
-            this.insertExport$exportUpgradeSideButtonExclusionZone = exclusionZone;
+        switch (type) {
+            case INSERT -> this.insertExport$insertUpgradeSideButtonExclusionZone = exclusionZone;
+            case EXPORT -> this.insertExport$exportUpgradeSideButtonExclusionZone = exclusionZone;
+            case BLOCK_PICKER_AMOUNT -> this.insertExport$blockPickerAmountSideButtonExclusionZone = exclusionZone;
         }
         return y + button.getHeight() + 2;
     }
@@ -197,6 +249,10 @@ public abstract class MixinAbstractGridScreen<T extends AbstractGridContainerMen
             this.getExclusionZones().remove(this.insertExport$exportUpgradeSideButtonExclusionZone);
             this.insertExport$exportUpgradeSideButtonExclusionZone = null;
         }
+        if (this.insertExport$blockPickerAmountSideButtonExclusionZone != null) {
+            this.getExclusionZones().remove(this.insertExport$blockPickerAmountSideButtonExclusionZone);
+            this.insertExport$blockPickerAmountSideButtonExclusionZone = null;
+        }
     }
 
     @Unique
@@ -210,6 +266,17 @@ public abstract class MixinAbstractGridScreen<T extends AbstractGridContainerMen
         return this.getMenu().slots.stream()
             .filter(UpgradeSlot.class::isInstance)
             .anyMatch(slot -> slot.getItem().is(upgrade));
+    }
+
+    @Unique
+    private int insertExport$getBlockPickerAmount() {
+        return this.getMenu().slots.stream()
+            .filter(UpgradeSlot.class::isInstance)
+            .map(Slot::getItem)
+            .filter(stack -> stack.is(Items.INSTANCE.getBlockPickerUpgrade()))
+            .findFirst()
+            .map(UpgradeConfiguration::getBlockPickerAmount)
+            .orElse(UpgradeConfiguration.DEFAULT_BLOCK_PICKER_AMOUNT);
     }
 
     @Unique

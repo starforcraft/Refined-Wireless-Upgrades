@@ -27,6 +27,7 @@ public class ConfigImpl implements ConfigData, com.ultramega.rsinsertexportupgra
     private static class UpgradeEntryImpl implements UpgradeEntry {
         private long insertUpgradeEnergyUsage = DefaultEnergyUsage.INSERT_UPGRADE;
         private long exportUpgradeEnergyUsage = DefaultEnergyUsage.EXPORT_UPGRADE;
+        private long blockPickerUpgradeEnergyUsage = DefaultEnergyUsage.BLOCK_PICKER_UPGRADE;
 
         @Override
         public long getInsertUpgradeEnergyUsage() {
@@ -36,6 +37,11 @@ public class ConfigImpl implements ConfigData, com.ultramega.rsinsertexportupgra
         @Override
         public long getExportUpgradeEnergyUsage() {
             return this.exportUpgradeEnergyUsage;
+        }
+
+        @Override
+        public long getBlockPickerUpgradeEnergyUsage() {
+            return this.blockPickerUpgradeEnergyUsage;
         }
     }
 }

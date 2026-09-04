@@ -14,12 +14,16 @@ import net.minecraft.world.item.component.CustomData;
 import static com.ultramega.rsinsertexportupgrade.common.util.InsertExportIdentifierUtil.MOD_ID;
 
 public final class UpgradeConfiguration {
+    public static final int DEFAULT_BLOCK_PICKER_AMOUNT = 1;
+    public static final int MAX_BLOCK_PICKER_AMOUNT = 64;
+
     private static final String CONFIGURATION_TAG = "Configuration";
     private static final String FILTER_TAG = "Filter";
     private static final String UPGRADES_TAG = "Upgrades";
     private static final String SELECTED_INVENTORY_SLOTS_TAG = "SelectedInventorySlots";
     private static final String FILTER_MODE_TAG = "FilterMode";
     private static final String FUZZY_MODE_TAG = "FuzzyMode";
+    private static final String BLOCK_PICKER_AMOUNT_TAG = "BlockPickerAmount";
     private static final int INVENTORY_SLOT_COUNT = UpgradeContainerMenu.INVENTORY_SLOT_COUNT;
     private static final int UPGRADE_SLOT_COUNT = 2;
 
@@ -60,6 +64,25 @@ public final class UpgradeConfiguration {
 
     public static void setFuzzyMode(final ItemStack stack, final boolean fuzzyMode) {
         updateConfiguration(stack, configuration -> configuration.putBoolean(FUZZY_MODE_TAG, fuzzyMode));
+    }
+
+    public static int getBlockPickerAmount(final ItemStack stack) {
+        final CompoundTag configuration = getConfiguration(stack);
+        if (!configuration.contains(BLOCK_PICKER_AMOUNT_TAG)) {
+            return DEFAULT_BLOCK_PICKER_AMOUNT;
+        }
+        return Math.clamp(
+            configuration.getInt(BLOCK_PICKER_AMOUNT_TAG),
+            DEFAULT_BLOCK_PICKER_AMOUNT,
+            MAX_BLOCK_PICKER_AMOUNT
+        );
+    }
+
+    public static void setBlockPickerAmount(final ItemStack stack, final int amount) {
+        updateConfiguration(stack, configuration -> configuration.putInt(
+            BLOCK_PICKER_AMOUNT_TAG,
+            Math.clamp(amount, DEFAULT_BLOCK_PICKER_AMOUNT, MAX_BLOCK_PICKER_AMOUNT)
+        ));
     }
 
     public static void loadFilter(final ItemStack stack,

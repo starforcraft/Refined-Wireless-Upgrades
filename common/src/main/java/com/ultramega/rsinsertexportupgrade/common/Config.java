@@ -7,5 +7,7 @@ public interface Config {
         long getInsertUpgradeEnergyUsage();
 
         long getExportUpgradeEnergyUsage();
+
+        long getBlockPickerUpgradeEnergyUsage();
     }
 }

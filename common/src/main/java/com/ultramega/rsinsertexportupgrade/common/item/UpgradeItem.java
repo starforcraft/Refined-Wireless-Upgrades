@@ -49,4 +49,12 @@ public class UpgradeItem extends AbstractUpgradeItem {
             createInsertExportTranslation("item", "export_upgrade.help")
         );
     }
+
+    public static UpgradeItem blockPickerUpgrade() {
+        return new UpgradeItem(
+            RefinedStorageApi.INSTANCE.getUpgradeRegistry(),
+            Platform.getConfig().getUpgrade()::getBlockPickerUpgradeEnergyUsage,
+            createInsertExportTranslation("item", "block_picker_upgrade.help")
+        );
+    }
 }

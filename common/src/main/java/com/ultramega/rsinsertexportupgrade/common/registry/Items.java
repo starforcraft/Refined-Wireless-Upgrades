@@ -14,6 +14,8 @@ public final class Items {
     private Supplier<AbstractUpgradeItem> insertUpgrade;
     @Nullable
     private Supplier<AbstractUpgradeItem> exportUpgrade;
+    @Nullable
+    private Supplier<AbstractUpgradeItem> blockPickerUpgrade;
 
     private Items() {
     }
@@ -32,5 +34,13 @@ public final class Items {
 
     public void setExportUpgrade(final Supplier<AbstractUpgradeItem> supplier) {
         this.exportUpgrade = supplier;
+    }
+
+    public AbstractUpgradeItem getBlockPickerUpgrade() {
+        return requireNonNull(this.blockPickerUpgrade).get();
+    }
+
+    public void setBlockPickerUpgrade(final Supplier<AbstractUpgradeItem> supplier) {
+        this.blockPickerUpgrade = supplier;
     }
 }

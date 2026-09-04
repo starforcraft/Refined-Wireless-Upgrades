@@ -2,9 +2,11 @@ package com.ultramega.rsinsertexportupgrade.neoforge;
 
 import com.ultramega.rsinsertexportupgrade.common.AbstractModInitializer;
 import com.ultramega.rsinsertexportupgrade.common.Platform;
+import com.ultramega.rsinsertexportupgrade.common.network.BlockPickerPayload;
 import com.ultramega.rsinsertexportupgrade.common.network.OpenUpgradePayload;
 import com.ultramega.rsinsertexportupgrade.common.network.ReturnToGridPayload;
 import com.ultramega.rsinsertexportupgrade.common.network.SyncSelectedInventorySlotsPayload;
+import com.ultramega.rsinsertexportupgrade.common.network.UpdateBlockPickerAmountPayload;
 import com.ultramega.rsinsertexportupgrade.common.network.UpdateSelectedInventorySlotsPayload;
 import com.ultramega.rsinsertexportupgrade.common.registry.CreativeModeTabItems;
 
@@ -89,6 +91,16 @@ public class ModInitializer extends AbstractModInitializer {
         registrar.playToServer(
             UpdateSelectedInventorySlotsPayload.TYPE,
             UpdateSelectedInventorySlotsPayload.STREAM_CODEC,
+            (payload, context) -> payload.handle(context.player())
+        );
+        registrar.playToServer(
+            BlockPickerPayload.TYPE,
+            BlockPickerPayload.STREAM_CODEC,
+            (payload, context) -> payload.handle(context.player())
+        );
+        registrar.playToServer(
+            UpdateBlockPickerAmountPayload.TYPE,
+            UpdateBlockPickerAmountPayload.STREAM_CODEC,
             (payload, context) -> payload.handle(context.player())
         );
 

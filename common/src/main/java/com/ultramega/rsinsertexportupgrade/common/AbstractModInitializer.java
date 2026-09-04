@@ -31,6 +31,12 @@ public class AbstractModInitializer {
             UpgradeItem::exportUpgrade
         );
         Items.INSTANCE.setExportUpgrade(exportUpgrade);
+
+        final Supplier<AbstractUpgradeItem> blockPickerUpgrade = callback.register(
+            ContentIds.BLOCK_PICKER_UPGRADE,
+            UpgradeItem::blockPickerUpgrade
+        );
+        Items.INSTANCE.setBlockPickerUpgrade(blockPickerUpgrade);
     }
 
     protected void registerMenus(final RegistryCallback<MenuType<?>> callback, final MenuTypeFactory factory) {
@@ -47,7 +53,8 @@ public class AbstractModInitializer {
     protected final void registerUpgradeMappings() {
         RefinedStorageApi.INSTANCE.getUpgradeRegistry().forDestination(MoreUpgradeDestinations.WIRELESS_GRIDS)
             .add(Items.INSTANCE.getInsertUpgrade(), 1)
-            .add(Items.INSTANCE.getExportUpgrade(), 1);
+            .add(Items.INSTANCE.getExportUpgrade(), 1)
+            .add(Items.INSTANCE.getBlockPickerUpgrade(), 1);
 
         RefinedStorageApi.INSTANCE.getUpgradeRegistry().forDestination(MoreUpgradeDestinations.EXPORT_UPGRADE)
             .add(com.refinedmods.refinedstorage.common.content.Items.INSTANCE.getStackUpgrade())

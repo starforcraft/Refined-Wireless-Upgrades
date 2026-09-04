@@ -34,6 +34,7 @@ public class ConfigImpl implements Config {
     private class UpgradeEntryImpl implements UpgradeEntry {
         private final ModConfigSpec.LongValue insertUpgradeEnergyUsage;
         private final ModConfigSpec.LongValue exportUpgradeEnergyUsage;
+        private final ModConfigSpec.LongValue blockPickerUpgradeEnergyUsage;
 
         UpgradeEntryImpl(final String name) {
             ConfigImpl.this.builder.translation(translationKey(name)).push(name);
@@ -44,6 +45,9 @@ public class ConfigImpl implements Config {
             this.exportUpgradeEnergyUsage = ConfigImpl.this.builder
                 .translation(translationKey(name + ".exportUpgradeEnergyUsage"))
                 .defineInRange("exportUpgradeEnergyUsage", DefaultEnergyUsage.EXPORT_UPGRADE, 0, Long.MAX_VALUE);
+            this.blockPickerUpgradeEnergyUsage = ConfigImpl.this.builder
+                .translation(translationKey(name + ".blockPickerUpgradeEnergyUsage"))
+                .defineInRange("blockPickerUpgradeEnergyUsage", DefaultEnergyUsage.BLOCK_PICKER_UPGRADE, 0, Long.MAX_VALUE);
 
             ConfigImpl.this.builder.pop();
         }
@@ -56,6 +60,11 @@ public class ConfigImpl implements Config {
         @Override
         public long getExportUpgradeEnergyUsage() {
             return this.exportUpgradeEnergyUsage.get();
+        }
+
+        @Override
+        public long getBlockPickerUpgradeEnergyUsage() {
+            return this.blockPickerUpgradeEnergyUsage.get();
         }
     }
 }

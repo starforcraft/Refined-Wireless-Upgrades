@@ -3,9 +3,18 @@ package com.ultramega.rsinsertexportupgrade.common.util;
 import java.util.Arrays;
 import java.util.Optional;
 
+import io.netty.buffer.ByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+
 public enum UpgradeType {
     INSERT(0, "insert"),
     EXPORT(1, "export");
+
+    public static final StreamCodec<ByteBuf, UpgradeType> STREAM_CODEC = ByteBufCodecs.idMapper(
+        id -> UpgradeType.valueOf(id).orElseThrow(),
+        UpgradeType::getId
+    );
 
     private final int id;
     private final String name;

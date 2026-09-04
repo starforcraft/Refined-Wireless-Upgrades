@@ -43,5 +43,15 @@ public final class RecipeProviderImpl extends RecipeProvider {
             .define('R', com.refinedmods.refinedstorage.common.content.Items.INSTANCE.getQuartzEnrichedIron())
             .unlockedBy(getHasName(speedUpgrade), has(speedUpgrade))
             .save(recipeOutput, ContentIds.EXPORT_UPGRADE);
+
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, Items.INSTANCE.getBlockPickerUpgrade())
+            .pattern("RSR")
+            .pattern("STS")
+            .pattern("RSR")
+            .define('S', speedUpgrade)
+            .define('T', stackUpgrade)
+            .define('R', com.refinedmods.refinedstorage.common.content.Items.INSTANCE.getQuartzEnrichedCopper())
+            .unlockedBy(getHasName(speedUpgrade), has(speedUpgrade))
+            .save(recipeOutput, ContentIds.BLOCK_PICKER_UPGRADE);
     }
 }

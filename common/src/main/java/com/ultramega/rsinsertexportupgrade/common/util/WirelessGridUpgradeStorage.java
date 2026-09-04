@@ -1,11 +1,13 @@
 package com.ultramega.rsinsertexportupgrade.common.util;
 
+import com.refinedmods.refinedstorage.common.grid.WirelessGridItem;
 import com.refinedmods.refinedstorage.common.upgrade.UpgradeContainer;
 import com.refinedmods.refinedstorage.common.util.ContainerUtil;
 
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 
@@ -15,6 +17,7 @@ public final class WirelessGridUpgradeStorage {
     public static final int SLOT_COUNT = 2;
 
     private static final String UPGRADES_TAG = "Upgrades";
+    private static final String WIRELESS_CRAFTING_GRID_CLASS = "com.refinedmods.refinedstorage.quartzarsenal.common.wirelesscraftinggrid.WirelessCraftingGridItem";
 
     private WirelessGridUpgradeStorage() {
     }
@@ -36,6 +39,17 @@ public final class WirelessGridUpgradeStorage {
         return false;
     }
 
+    public static boolean hasUpgrade(final ItemStack wirelessGrid,
+                                     final Item upgrade,
+                                     final Player player) {
+        return !getUpgrade(wirelessGrid, upgrade, player).isEmpty();
+    }
+
+    public static boolean isSupportedWirelessGrid(final ItemStack stack) {
+        return stack.getItem() instanceof WirelessGridItem
+            || WIRELESS_CRAFTING_GRID_CLASS.equals(stack.getItem().getClass().getName());
+    }
+
     public static UpgradeContainer createContainer(final ItemStack wirelessGrid, final Player player) {
         final UpgradeContainer container = new UpgradeContainer(MoreUpgradeDestinations.WIRELESS_GRIDS, SLOT_COUNT);
         final CompoundTag root = getRoot(wirelessGrid);
@@ -52,6 +66,22 @@ public final class WirelessGridUpgradeStorage {
             return ItemStack.EMPTY;
         }
         return createContainer(wirelessGrid, player).getItem(slot);
+    }
+
+    public static ItemStack getUpgrade(final ItemStack wirelessGrid,
+                                       final Item upgrade,
+                                       final Player player) {
+        if (!hasUpgrades(wirelessGrid)) {
+            return ItemStack.EMPTY;
+        }
+        final UpgradeContainer container = createContainer(wirelessGrid, player);
+        for (int slot = 0; slot < container.getContainerSize(); ++slot) {
+            final ItemStack installedUpgrade = container.getItem(slot);
+            if (installedUpgrade.is(upgrade)) {
+                return installedUpgrade;
+            }
+        }
+        return ItemStack.EMPTY;
     }
 
     public static void setUpgrade(final ItemStack wirelessGrid,

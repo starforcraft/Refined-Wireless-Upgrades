@@ -22,9 +22,9 @@ import static com.ultramega.rsinsertexportupgrade.common.util.InsertExportIdenti
 
 public record OpenUpgradePayload(UpgradeType upgradeType) implements CustomPacketPayload {
     public static final Type<OpenUpgradePayload> TYPE = new Type<>(createInsertExportIdentifier("open_upgrade"));
-    public static final StreamCodec<RegistryFriendlyByteBuf, OpenUpgradePayload> STREAM_CODEC = StreamCodec.of(
-        (buffer, payload) -> buffer.writeVarInt(payload.upgradeType.getId()),
-        buffer -> new OpenUpgradePayload(UpgradeType.valueOf(buffer.readVarInt()).orElseThrow())
+    public static final StreamCodec<RegistryFriendlyByteBuf, OpenUpgradePayload> STREAM_CODEC = StreamCodec.composite(
+        UpgradeType.STREAM_CODEC, OpenUpgradePayload::upgradeType,
+        OpenUpgradePayload::new
     );
 
     public void handle(final Player player) {

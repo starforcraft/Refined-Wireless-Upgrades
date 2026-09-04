@@ -11,5 +11,6 @@ public final class CreativeModeTabItems {
     public static void appendItems(final Consumer<ItemStack> consumer) {
         consumer.accept(Items.INSTANCE.getInsertUpgrade().getDefaultInstance());
         consumer.accept(Items.INSTANCE.getExportUpgrade().getDefaultInstance());
+        consumer.accept(Items.INSTANCE.getBlockPickerUpgrade().getDefaultInstance());
     }
 }

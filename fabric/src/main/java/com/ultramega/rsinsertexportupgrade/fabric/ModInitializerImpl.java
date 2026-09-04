@@ -2,9 +2,11 @@ package com.ultramega.rsinsertexportupgrade.fabric;
 
 import com.ultramega.rsinsertexportupgrade.common.AbstractModInitializer;
 import com.ultramega.rsinsertexportupgrade.common.Platform;
+import com.ultramega.rsinsertexportupgrade.common.network.BlockPickerPayload;
 import com.ultramega.rsinsertexportupgrade.common.network.OpenUpgradePayload;
 import com.ultramega.rsinsertexportupgrade.common.network.ReturnToGridPayload;
 import com.ultramega.rsinsertexportupgrade.common.network.SyncSelectedInventorySlotsPayload;
+import com.ultramega.rsinsertexportupgrade.common.network.UpdateBlockPickerAmountPayload;
 import com.ultramega.rsinsertexportupgrade.common.network.UpdateSelectedInventorySlotsPayload;
 import com.ultramega.rsinsertexportupgrade.common.registry.CreativeModeTabItems;
 
@@ -57,6 +59,8 @@ public class ModInitializerImpl extends AbstractModInitializer implements Refine
         PayloadTypeRegistry.playC2S().register(OpenUpgradePayload.TYPE, OpenUpgradePayload.STREAM_CODEC);
         PayloadTypeRegistry.playC2S().register(ReturnToGridPayload.TYPE, ReturnToGridPayload.STREAM_CODEC);
         PayloadTypeRegistry.playC2S().register(UpdateSelectedInventorySlotsPayload.TYPE, UpdateSelectedInventorySlotsPayload.STREAM_CODEC);
+        PayloadTypeRegistry.playC2S().register(BlockPickerPayload.TYPE, BlockPickerPayload.STREAM_CODEC);
+        PayloadTypeRegistry.playC2S().register(UpdateBlockPickerAmountPayload.TYPE, UpdateBlockPickerAmountPayload.STREAM_CODEC);
 
         PayloadTypeRegistry.playS2C().register(SyncSelectedInventorySlotsPayload.TYPE, SyncSelectedInventorySlotsPayload.STREAM_CODEC);
 
@@ -70,6 +74,14 @@ public class ModInitializerImpl extends AbstractModInitializer implements Refine
         );
         ServerPlayNetworking.registerGlobalReceiver(
             UpdateSelectedInventorySlotsPayload.TYPE,
+            (payload, context) -> payload.handle(context.player())
+        );
+        ServerPlayNetworking.registerGlobalReceiver(
+            BlockPickerPayload.TYPE,
+            (payload, context) -> payload.handle(context.player())
+        );
+        ServerPlayNetworking.registerGlobalReceiver(
+            UpdateBlockPickerAmountPayload.TYPE,
             (payload, context) -> payload.handle(context.player())
         );
     }
