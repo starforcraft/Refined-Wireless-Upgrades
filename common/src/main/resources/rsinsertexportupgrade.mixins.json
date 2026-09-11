@@ -4,9 +4,10 @@
   "package": "com.ultramega.rsinsertexportupgrade.common.mixin",
   "compatibilityLevel": "JAVA_17",
   "mixins": [
-    "AbstractNetworkEnergyItemMixin",
+    "ServerPlayerMixin",
     "AbstractGridContainerMenuMixin",
-    "InventorySlotReferenceAccessor",
+    "RefinedStorageApiAccessor",
+    "RefinedStorageApiProxyInvoker",
     "WirelessGridContainerMenuMixin",
     "WirelessCraftingGridContainerMenuMixin"
   ],

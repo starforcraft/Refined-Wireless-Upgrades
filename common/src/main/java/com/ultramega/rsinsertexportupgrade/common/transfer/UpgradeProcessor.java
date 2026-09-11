@@ -23,32 +23,61 @@ import com.refinedmods.refinedstorage.common.api.storage.root.FuzzyRootStorage;
 import com.refinedmods.refinedstorage.common.api.support.network.item.NetworkItemContext;
 import com.refinedmods.refinedstorage.common.api.support.resource.FuzzyModeNormalizer;
 import com.refinedmods.refinedstorage.common.api.support.resource.ResourceFactory;
+import com.refinedmods.refinedstorage.common.api.support.slotreference.SlotReference;
 import com.refinedmods.refinedstorage.common.security.BuiltinPermission;
 import com.refinedmods.refinedstorage.common.upgrade.UpgradeContainer;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.UnaryOperator;
 
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 
 public final class UpgradeProcessor {
     private static final int AUTOCRAFTING_RETRY_INTERVAL = 20;
 
-    private UpgradeProcessor() {
+    private Map<ItemStack, CachedGrid> previousGrids = new IdentityHashMap<>();
+    private Map<ItemStack, CachedGrid> currentGrids = new IdentityHashMap<>();
+
+    public void tick(final ServerPlayer player) {
+        for (final SlotReference reference : WirelessGridUpgradeStorage.find(player)) {
+            final ItemStack stack = reference.resolve(player).orElse(ItemStack.EMPTY);
+            if (!WirelessGridUpgradeStorage.isSupportedWirelessGrid(stack) || this.currentGrids.containsKey(stack)) {
+                continue;
+            }
+            final CustomData data = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY);
+            CachedGrid cached = this.previousGrids.get(stack);
+            if (cached == null || cached.data() != data || cached.registries() != player.registryAccess()) {
+                cached = CachedGrid.create(stack, data, player);
+            }
+            this.currentGrids.put(stack, cached);
+            if (!cached.supported()) {
+                continue;
+            }
+            final NetworkItemContext context = RefinedStorageApi.INSTANCE.getNetworkItemHelper().createContext(stack, player, reference);
+            tick(stack, player, reference, context, cached);
+        }
+
+        this.previousGrids.clear();
+        final Map<ItemStack, CachedGrid> reusable = this.previousGrids;
+        this.previousGrids = this.currentGrids;
+        this.currentGrids = reusable;
     }
 
-    public static void tick(final ItemStack wirelessGrid, final ServerPlayer player, final int wirelessGridSlot, final NetworkItemContext context) {
-        final UpgradeContainer installedUpgrades = WirelessGridUpgradeStorage.createContainer(wirelessGrid, player);
-        if (!hasSupportedUpgrade(installedUpgrades)) {
-            return;
-        }
+    private static void tick(final ItemStack wirelessGrid, final ServerPlayer player,
+                             final SlotReference wirelessGridSlot, final NetworkItemContext context,
+                             final CachedGrid cached) {
+        final UpgradeContainer installedUpgrades = cached.upgrades();
         if (!context.isActive()) {
             return;
         }
@@ -70,9 +99,11 @@ public final class UpgradeProcessor {
             }
 
             if (upgradeStack.is(Items.INSTANCE.getInsertUpgrade()) && SecurityHelper.isAllowed(player, BuiltinPermission.INSERT, network)) {
-                inventoryChanged |= processInsertUpgrade(upgradeStack, upgradeItem, player, wirelessGrid, wirelessGridSlot, storage, actor, context);
+                inventoryChanged |= processInsertUpgrade(cached.configurations()[slot], cached.insertFilters()[slot],
+                    upgradeItem, player, wirelessGrid, wirelessGridSlot, storage, actor, context);
             } else if (upgradeStack.is(Items.INSTANCE.getExportUpgrade()) && SecurityHelper.isAllowed(player, BuiltinPermission.EXTRACT, network)) {
-                inventoryChanged |= processExportUpgrade(upgradeStack, upgradeItem, player, network, storage, actor, context);
+                inventoryChanged |= processExportUpgrade(cached.configurations()[slot], cached.exportResources()[slot],
+                    upgradeItem, player, network, storage, actor, context);
             }
         }
 
@@ -81,27 +112,26 @@ public final class UpgradeProcessor {
         }
     }
 
-    private static boolean processInsertUpgrade(final ItemStack upgradeStack,
+    private static boolean processInsertUpgrade(final RuntimeConfiguration configuration,
+                                                final Filter filter,
                                                 final UpgradeItem upgradeItem,
                                                 final ServerPlayer player,
                                                 final ItemStack wirelessGrid,
-                                                final int wirelessGridSlot,
+                                                final SlotReference wirelessGridSlot,
                                                 final StorageNetworkComponent storage,
                                                 final Actor actor,
                                                 final NetworkItemContext context) {
-        final RuntimeConfiguration configuration = UpgradeConfiguration.getRuntimeConfiguration(upgradeStack, player.registryAccess());
         if (!configuration.hasSelectedSlots()) {
             return false;
         }
 
         final Inventory inventory = player.getInventory();
         final ResourceFactory itemResourceFactory = RefinedStorageApi.INSTANCE.getItemResourceFactory();
-        final Filter filter = createInsertFilter(configuration, itemResourceFactory);
         final int[] selectedSlots = configuration.selectedInventorySlots();
         boolean inventoryChanged = false;
 
         for (int slot = 0; slot < Math.min(selectedSlots.length, inventory.getContainerSize()); ++slot) {
-            if (selectedSlots[slot] <= 0 || slot == wirelessGridSlot) {
+            if (selectedSlots[slot] <= 0 || wirelessGridSlot.isDisabledSlot(slot)) {
                 continue;
             }
 
@@ -148,21 +178,20 @@ public final class UpgradeProcessor {
         return filter;
     }
 
-    private static boolean processExportUpgrade(final ItemStack upgradeStack,
+    private static boolean processExportUpgrade(final RuntimeConfiguration configuration,
+                                                final ResourceKey[] configuredResources,
                                                 final UpgradeItem upgradeItem,
                                                 final ServerPlayer player,
                                                 final Network network,
                                                 final StorageNetworkComponent storage,
                                                 final Actor actor,
                                                 final NetworkItemContext context) {
-        final RuntimeConfiguration configuration = UpgradeConfiguration.getRuntimeConfiguration(upgradeStack, player.registryAccess());
         if (!configuration.hasSelectedSlots()) {
             return false;
         }
 
         final ResourceFactory itemResourceFactory = RefinedStorageApi.INSTANCE.getItemResourceFactory();
         final int[] selectedSlots = configuration.selectedInventorySlots();
-        final ResourceKey[] configuredResources = createConfiguredResources(configuration.filter(), itemResourceFactory);
         final long transferSize = configuration.hasStackUpgrade() ? 64 : 1;
         final boolean shouldTryAutocrafting = configuration.hasAutocraftingUpgrade() && player.level().getGameTime() % AUTOCRAFTING_RETRY_INTERVAL == 0;
         final Map<ResourceKey, Long> autocraftingRequests = shouldTryAutocrafting ? new HashMap<>() : Map.of();
@@ -287,14 +316,33 @@ public final class UpgradeProcessor {
         }
     }
 
-    private static boolean hasSupportedUpgrade(final UpgradeContainer installedUpgrades) {
-        for (int slot = 0; slot < installedUpgrades.getContainerSize(); ++slot) {
-            final ItemStack upgrade = installedUpgrades.getItem(slot);
-            if (upgrade.is(Items.INSTANCE.getInsertUpgrade()) || upgrade.is(Items.INSTANCE.getExportUpgrade())) {
-                return true;
+    private record CachedGrid(CustomData data,
+                              HolderLookup.Provider registries,
+                              UpgradeContainer upgrades,
+                              RuntimeConfiguration[] configurations,
+                              Filter[] insertFilters,
+                              ResourceKey[][] exportResources,
+                              boolean supported) {
+        private static CachedGrid create(final ItemStack stack, final CustomData data, final ServerPlayer player) {
+            final UpgradeContainer upgrades = WirelessGridUpgradeStorage.createContainer(stack, player);
+            final RuntimeConfiguration[] configurations = new RuntimeConfiguration[upgrades.getContainerSize()];
+            final Filter[] insertFilters = new Filter[upgrades.getContainerSize()];
+            final ResourceKey[][] exportResources = new ResourceKey[upgrades.getContainerSize()][];
+            boolean supported = false;
+            for (int slot = 0; slot < upgrades.getContainerSize(); ++slot) {
+                final ItemStack upgrade = upgrades.getItem(slot);
+                if (upgrade.is(Items.INSTANCE.getInsertUpgrade()) || upgrade.is(Items.INSTANCE.getExportUpgrade())) {
+                    configurations[slot] = UpgradeConfiguration.getRuntimeConfiguration(upgrade, player.registryAccess());
+                    supported |= configurations[slot].hasSelectedSlots();
+                    if (upgrade.is(Items.INSTANCE.getInsertUpgrade())) {
+                        insertFilters[slot] = createInsertFilter(configurations[slot], RefinedStorageApi.INSTANCE.getItemResourceFactory());
+                    } else {
+                        exportResources[slot] = createConfiguredResources(configurations[slot].filter(), RefinedStorageApi.INSTANCE.getItemResourceFactory());
+                    }
+                }
             }
+            return new CachedGrid(data, player.registryAccess(), upgrades, configurations, insertFilters, exportResources, supported);
         }
-        return false;
     }
 
     private record ExportResult(boolean transferred, boolean resourceWasStored) {

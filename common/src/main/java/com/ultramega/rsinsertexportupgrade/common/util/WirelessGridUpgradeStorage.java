@@ -1,10 +1,20 @@
 package com.ultramega.rsinsertexportupgrade.common.util;
 
+import com.ultramega.rsinsertexportupgrade.common.mixin.RefinedStorageApiAccessor;
+import com.ultramega.rsinsertexportupgrade.common.mixin.RefinedStorageApiProxyInvoker;
+
+import com.refinedmods.refinedstorage.common.api.RefinedStorageApi;
+import com.refinedmods.refinedstorage.common.api.support.slotreference.SlotReference;
 import com.refinedmods.refinedstorage.common.grid.WirelessGridItem;
 import com.refinedmods.refinedstorage.common.upgrade.UpgradeContainer;
 import com.refinedmods.refinedstorage.common.util.ContainerUtil;
 
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
@@ -18,6 +28,7 @@ public final class WirelessGridUpgradeStorage {
 
     private static final String UPGRADES_TAG = "Upgrades";
     private static final String WIRELESS_CRAFTING_GRID_CLASS = "com.refinedmods.refinedstorage.quartzarsenal.common.wirelesscraftinggrid.WirelessCraftingGridItem";
+    private static final String WIRELESS_UNIVERSAL_GRID_CLASS = "com.ultramega.universalgrid.common.wirelessuniversalgrid.WirelessUniversalGridItem";
 
     private WirelessGridUpgradeStorage() {
     }
@@ -46,8 +57,19 @@ public final class WirelessGridUpgradeStorage {
     }
 
     public static boolean isSupportedWirelessGrid(final ItemStack stack) {
-        return stack.getItem() instanceof WirelessGridItem
-            || WIRELESS_CRAFTING_GRID_CLASS.equals(stack.getItem().getClass().getName());
+        return !stack.isEmpty() && isSupportedWirelessGridItem(stack.getItem());
+    }
+
+    public static boolean isSupportedWirelessGridItem(final Item item) {
+        if (item instanceof WirelessGridItem) {
+            return true;
+        }
+        for (Class<?> type = item.getClass(); type != null; type = type.getSuperclass()) {
+            if (WIRELESS_CRAFTING_GRID_CLASS.equals(type.getName()) || WIRELESS_UNIVERSAL_GRID_CLASS.equals(type.getName())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static UpgradeContainer createContainer(final ItemStack wirelessGrid, final Player player) {
@@ -109,5 +131,16 @@ public final class WirelessGridUpgradeStorage {
     private static CompoundTag getRoot(final ItemStack wirelessGrid) {
         final CompoundTag customData = wirelessGrid.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         return customData.contains(MOD_ID) ? customData.getCompound(MOD_ID) : new CompoundTag();
+    }
+
+    public static List<SlotReference> find(final Player player) {
+        return ((RefinedStorageApiAccessor) ((RefinedStorageApiProxyInvoker) RefinedStorageApi.INSTANCE).insertExport$ensureLoaded())
+            .insertExport$getSlotReferenceProvider().find(player, SupportedItems.ITEMS);
+    }
+
+    private static final class SupportedItems {
+        private static final Set<Item> ITEMS = BuiltInRegistries.ITEM.stream()
+            .filter(WirelessGridUpgradeStorage::isSupportedWirelessGridItem)
+            .collect(Collectors.toUnmodifiableSet());
     }
 }

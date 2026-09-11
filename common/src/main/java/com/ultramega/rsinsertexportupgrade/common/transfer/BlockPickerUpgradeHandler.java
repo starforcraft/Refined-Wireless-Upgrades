@@ -1,7 +1,6 @@
 package com.ultramega.rsinsertexportupgrade.common.transfer;
 
 import com.ultramega.rsinsertexportupgrade.common.menu.UpgradeConfiguration;
-import com.ultramega.rsinsertexportupgrade.common.mixin.InventorySlotReferenceAccessor;
 import com.ultramega.rsinsertexportupgrade.common.registry.Items;
 import com.ultramega.rsinsertexportupgrade.common.util.WirelessGridUpgradeStorage;
 
@@ -69,8 +68,9 @@ public final class BlockPickerUpgradeHandler {
 
         final ResourceKey resource = configuredResource.get().resource();
         final Actor actor = new PlayerActor(player);
-        for (int slot = 0; slot < inventory.getContainerSize(); ++slot) {
-            if (tryExtract(player, inventory.getItem(slot), slot, destinationSlot, resource, actor)) {
+        for (final SlotReference reference : WirelessGridUpgradeStorage.find(player)) {
+            final ItemStack wirelessGrid = reference.resolve(player).orElse(ItemStack.EMPTY);
+            if (tryExtract(player, wirelessGrid, reference, destinationSlot, resource, actor)) {
                 inventory.pickSlot(destinationSlot);
                 player.connection.send(new ClientboundSetCarriedItemPacket(inventory.selected));
                 player.inventoryMenu.broadcastChanges();
@@ -81,7 +81,7 @@ public final class BlockPickerUpgradeHandler {
 
     private static boolean tryExtract(final ServerPlayer player,
                                       final ItemStack wirelessGrid,
-                                      final int wirelessGridSlot,
+                                      final SlotReference slotReference,
                                       final int destinationSlot,
                                       final ResourceKey resource,
                                       final Actor actor) {
@@ -93,7 +93,6 @@ public final class BlockPickerUpgradeHandler {
             return false;
         }
 
-        final SlotReference slotReference = InventorySlotReferenceAccessor.create(wirelessGridSlot);
         final NetworkItemContext context = RefinedStorageApi.INSTANCE.getNetworkItemHelper().createContext(wirelessGrid, player, slotReference);
         if (!context.isActive()) {
             return false;
