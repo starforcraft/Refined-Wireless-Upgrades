@@ -9,6 +9,9 @@ public final class Platform {
     @Nullable
     private static Supplier<Config> configProvider = null;
 
+    @Nullable
+    private static Supplier<ServerConfig> serverConfigProvider = null;
+
     private Platform() {
     }
 
@@ -18,5 +21,13 @@ public final class Platform {
 
     public static Config getConfig() {
         return requireNonNull(configProvider, "Config isn't loaded yet").get();
+    }
+
+    public static void setServerConfigProvider(final Supplier<ServerConfig> provider) {
+        serverConfigProvider = provider;
+    }
+
+    public static ServerConfig getServerConfig() {
+        return requireNonNull(serverConfigProvider, "Server config isn't loaded yet").get();
     }
 }

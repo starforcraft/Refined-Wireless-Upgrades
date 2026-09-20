@@ -20,6 +20,9 @@ public record UpgradeMenuProvider(UpgradeType type, SlotReference gridSlotRefere
 
     @Override
     public AbstractContainerMenu createMenu(final int syncId, final Inventory playerInventory, final Player player) {
+        if (this.type == UpgradeType.MAGNET) {
+            return MagnetContainerMenu.server(syncId, playerInventory, this.gridSlotReference, this.sourceUpgradeSlot);
+        }
         return UpgradeContainerMenu.server(this.type, syncId, playerInventory, this.gridSlotReference, this.sourceUpgradeSlot);
     }
 }

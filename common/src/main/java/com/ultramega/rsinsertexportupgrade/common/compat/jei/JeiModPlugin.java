@@ -1,5 +1,7 @@
 package com.ultramega.rsinsertexportupgrade.common.compat.jei;
 
+import com.ultramega.rsinsertexportupgrade.common.screen.MagnetScreen;
+import com.ultramega.rsinsertexportupgrade.common.screen.UpgradeScreen;
 import com.ultramega.rsinsertexportupgrade.common.util.UpgradeSlotsExtraAreaProvider;
 
 import com.refinedmods.refinedstorage.common.grid.screen.AbstractGridScreen;
@@ -26,9 +28,25 @@ public class JeiModPlugin implements IModPlugin {
                 @Override
                 public List<Rect2i> getGuiExtraAreas(final AbstractGridScreen<?> screen) {
                     if (screen instanceof UpgradeSlotsExtraAreaProvider provider) {
-                        return provider.insertexport$getUpgradeSlotsExtraAreas();
+                        return provider.wirelessUpgrades$getUpgradeSlotsExtraAreas();
                     }
                     return List.of();
+                }
+            }
+        );
+        registration.addGenericGuiContainerHandler(UpgradeScreen.class,
+            new IGuiContainerHandler<UpgradeScreen>() {
+                @Override
+                public List<Rect2i> getGuiExtraAreas(final UpgradeScreen screen) {
+                    return screen.getExclusionZones();
+                }
+            }
+        );
+        registration.addGenericGuiContainerHandler(MagnetScreen.class,
+            new IGuiContainerHandler<MagnetScreen>() {
+                @Override
+                public List<Rect2i> getGuiExtraAreas(final MagnetScreen screen) {
+                    return screen.getExclusionZones();
                 }
             }
         );

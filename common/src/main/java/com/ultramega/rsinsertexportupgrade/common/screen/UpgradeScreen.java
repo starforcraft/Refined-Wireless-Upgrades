@@ -1,5 +1,6 @@
 package com.ultramega.rsinsertexportupgrade.common.screen;
 
+import com.ultramega.rsinsertexportupgrade.common.compat.curios.CuriosBridge;
 import com.ultramega.rsinsertexportupgrade.common.menu.UpgradeContainerMenu;
 import com.ultramega.rsinsertexportupgrade.common.menu.UpgradePlayerSlot;
 import com.ultramega.rsinsertexportupgrade.common.network.ReturnToGridPayload;
@@ -9,16 +10,20 @@ import com.ultramega.rsinsertexportupgrade.common.util.UpgradeType;
 import com.refinedmods.refinedstorage.common.Platform;
 import com.refinedmods.refinedstorage.common.storage.FilterModeSideButtonWidget;
 import com.refinedmods.refinedstorage.common.support.AbstractBaseScreen;
-import com.refinedmods.refinedstorage.common.support.containermenu.FilterSlot;
 import com.refinedmods.refinedstorage.common.support.containermenu.PropertyTypes;
+import com.refinedmods.refinedstorage.common.support.containermenu.ResourceSlot;
 import com.refinedmods.refinedstorage.common.support.widget.FuzzyModeSideButtonWidget;
 
 import java.awt.Color;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import javax.annotation.Nullable;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -27,7 +32,6 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
-import org.lwjgl.glfw.GLFW;
 
 import static com.ultramega.rsinsertexportupgrade.common.util.InsertExportIdentifierUtil.createInsertExportIdentifier;
 import static com.ultramega.rsinsertexportupgrade.common.util.InsertExportIdentifierUtil.createInsertExportTranslation;
@@ -44,6 +48,9 @@ public class UpgradeScreen extends AbstractBaseScreen<UpgradeContainerMenu> {
     private static final int MASS_SELECT_INVENTORY_Y = 76;
     private static final int MASS_SELECT_HOTBAR_Y = MASS_SELECT_INVENTORY_Y + 58;
 
+    @Nullable
+    private final CuriosSlotPanel curiosPanel;
+    private boolean clickedCuriosPanel;
     private final UpgradeType type;
     private final int[] selectedInventorySlots;
 
@@ -53,7 +60,7 @@ public class UpgradeScreen extends AbstractBaseScreen<UpgradeContainerMenu> {
     private boolean suppressReleaseAfterDrag = false;
     private boolean blockedQuickCraftDrag = false;
     private int clickedSlotId = -1;
-    private boolean returningToGrid;
+    private boolean returning;
 
     public UpgradeScreen(final UpgradeType type,
                          final UpgradeContainerMenu menu,
@@ -61,6 +68,7 @@ public class UpgradeScreen extends AbstractBaseScreen<UpgradeContainerMenu> {
                          final Component title) {
         super(menu, playerInventory, title);
         this.type = type;
+        this.curiosPanel = CuriosBridge.isLoaded() ? new CuriosSlotPanel(menu, type) : null;
         this.selectedInventorySlots = new int[UpgradeContainerMenu.INVENTORY_SLOT_COUNT];
         menu.setSelectedInventorySlotsListener(this::setSelectedInventorySlots);
         this.imageWidth = type == UpgradeType.EXPORT ? BACKGROUND_WIDTH_WITH_EXTRA_SLOTS : BASE_BACKGROUND_WIDTH;
@@ -74,6 +82,9 @@ public class UpgradeScreen extends AbstractBaseScreen<UpgradeContainerMenu> {
     protected void init() {
         super.init();
         UpgradeScreenNavigation.restoreMousePosition();
+        if (this.curiosPanel != null) {
+            this.addRenderableWidget(this.curiosPanel.createButton(this.leftPos, this.topPos));
+        }
         if (this.type == UpgradeType.INSERT) {
             this.addSideButton(new FilterModeSideButtonWidget(
                 this.getMenu().getProperty(PropertyTypes.FILTER_MODE),
@@ -106,7 +117,7 @@ public class UpgradeScreen extends AbstractBaseScreen<UpgradeContainerMenu> {
         this.renderResourceSlots(graphics);
 
         for (final Slot slot : this.getMenu().slots) {
-            if (slot instanceof FilterSlot) {
+            if (slot instanceof ResourceSlot) {
                 if (this.type == UpgradeType.EXPORT) {
                     renderSlotHighlight(graphics, this.type, this.font, this.leftPos + slot.x, this.topPos + slot.y, true, slot.getContainerSlot() + 1);
                 }
@@ -131,6 +142,17 @@ public class UpgradeScreen extends AbstractBaseScreen<UpgradeContainerMenu> {
         }
 
         renderMassSelect(graphics, this.leftPos + MASS_SELECT_X, this.topPos + MASS_SELECT_INVENTORY_Y);
+        if (this.curiosPanel != null) {
+            this.curiosPanel.render(graphics, this.font, this.leftPos, this.topPos + 67, mouseX, mouseY);
+        }
+    }
+
+    @Override
+    public void render(final GuiGraphics graphics, final int mouseX, final int mouseY, final float delta) {
+        super.render(graphics, mouseX, mouseY, delta);
+        if (this.curiosPanel != null) {
+            this.curiosPanel.renderTooltip(graphics, this.font, mouseX, mouseY);
+        }
     }
 
     public static void renderSlotHighlight(final GuiGraphics graphics,
@@ -175,6 +197,13 @@ public class UpgradeScreen extends AbstractBaseScreen<UpgradeContainerMenu> {
     @Override
     public boolean mouseClicked(final double mouseX, final double mouseY, final int button) {
         final ItemStack carried = this.draggingItem.isEmpty() ? this.menu.getCarried() : this.draggingItem;
+        if (this.curiosPanel != null && this.curiosPanel.contains(mouseX, mouseY)) {
+            this.clickedCuriosPanel = true;
+            if (this.curiosPanel.mouseClicked(mouseX, mouseY, button, !carried.isEmpty())) {
+                this.playClickSound();
+            }
+            return true;
+        }
         if (carried.isEmpty()) {
             final Slot slot = this.findSlot(mouseX, mouseY);
             if (slot instanceof UpgradePlayerSlot) {
@@ -200,6 +229,9 @@ public class UpgradeScreen extends AbstractBaseScreen<UpgradeContainerMenu> {
                                 final int button,
                                 final double dragX,
                                 final double dragY) {
+        if (this.clickedCuriosPanel) {
+            return true;
+        }
         this.dragging = true;
 
         final ItemStack carried = this.draggingItem;
@@ -223,6 +255,10 @@ public class UpgradeScreen extends AbstractBaseScreen<UpgradeContainerMenu> {
 
     @Override
     public boolean mouseReleased(final double mouseX, final double mouseY, final int button) {
+        if (this.clickedCuriosPanel) {
+            this.clickedCuriosPanel = false;
+            return true;
+        }
         boolean handled = false;
 
         final Slot slot = this.findSlot(mouseX, mouseY);
@@ -288,19 +324,20 @@ public class UpgradeScreen extends AbstractBaseScreen<UpgradeContainerMenu> {
     }
 
     @Override
-    public boolean keyPressed(final int keyCode, final int scanCode, final int modifiers) {
-        if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
-            this.returnToGrid();
-            return true;
+    public List<Rect2i> getExclusionZones() {
+        final List<Rect2i> zones = new ArrayList<>(super.getExclusionZones());
+        if (this.curiosPanel != null) {
+            zones.addAll(this.curiosPanel.getExclusionZones());
         }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return zones;
     }
 
-    private void returnToGrid() {
-        if (this.returningToGrid) {
+    @Override
+    public void onClose() {
+        if (this.returning) {
             return;
         }
-        this.returningToGrid = true;
+        this.returning = true;
         this.sendUpdate();
         UpgradeScreenNavigation.rememberMousePosition();
         Platform.INSTANCE.sendPacketToServer(new ReturnToGridPayload(this.getMenu().containerId));

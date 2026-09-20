@@ -41,6 +41,7 @@ val refinedstorageQuartzArsenalVersion: String by project
 val jeiVersion: String by project
 
 dependencies {
+    api(libs.apiguardian)
     api("com.refinedmods.refinedstorage:refinedstorage-common:${refinedstorageVersion}")
     api("com.refinedmods.refinedstorage:refinedstorage-quartz-arsenal-common:${refinedstorageQuartzArsenalVersion}")
 

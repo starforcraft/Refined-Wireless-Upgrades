@@ -4,6 +4,14 @@ plugins {
 
 repositories {
     maven {
+        url = uri("https://modmaven.dev/")
+        content {
+            includeGroup("mekanism")
+            includeGroup("dev.technici4n")
+        }
+    }
+    maven { url = uri("https://maven.theillusivec4.top/") }
+    maven {
         name = "Refined Storage"
         url = uri("https://maven.creeperhost.net")
         content {
@@ -41,11 +49,18 @@ val minecraftVersion: String by project
 val refinedstorageVersion: String by project
 val refinedstorageQuartzArsenalVersion: String by project
 val jeiVersion: String by project
+val curiosVersion: String by project
+val mekanismVersion: String by project
+val grandpowerVersion: String by project
 
 val commonJava by configurations.existing
 val commonResources by configurations.existing
 
 dependencies {
+    compileOnly("mekanism:Mekanism:${minecraftVersion}-${mekanismVersion}:api")
+    compileOnly("dev.technici4n:GrandPower:${grandpowerVersion}")
+    compileOnly("top.theillusivec4.curios:curios-neoforge:${curiosVersion}:api")
+    runtimeOnly("top.theillusivec4.curios:curios-neoforge:${curiosVersion}")
     compileOnly(project(":common"))
     commonJava(project(path = ":common", configuration = "commonJava"))
     commonResources(project(path = ":common", configuration = "commonResources"))

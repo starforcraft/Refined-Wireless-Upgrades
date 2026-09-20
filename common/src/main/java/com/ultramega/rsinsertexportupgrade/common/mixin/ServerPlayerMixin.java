@@ -12,10 +12,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(ServerPlayer.class)
 public abstract class ServerPlayerMixin {
     @Unique
-    private final UpgradeProcessor insertExport$upgradeProcessor = new UpgradeProcessor();
+    private final UpgradeProcessor wirelessUpgrades$upgradeProcessor = new UpgradeProcessor();
 
     @Inject(method = "tick", at = @At("TAIL"))
-    private void insertExport$tickUpgrades(final CallbackInfo ci) {
-        this.insertExport$upgradeProcessor.tick((ServerPlayer) (Object) this);
+    private void wirelessUpgrades$tickUpgrades(final CallbackInfo ci) {
+        this.wirelessUpgrades$upgradeProcessor.tick((ServerPlayer) (Object) this);
     }
 }

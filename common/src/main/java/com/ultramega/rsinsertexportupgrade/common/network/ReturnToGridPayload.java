@@ -1,5 +1,6 @@
 package com.ultramega.rsinsertexportupgrade.common.network;
 
+import com.ultramega.rsinsertexportupgrade.common.menu.MagnetContainerMenu;
 import com.ultramega.rsinsertexportupgrade.common.menu.UpgradeContainerMenu;
 
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -24,7 +25,13 @@ public record ReturnToGridPayload(int containerId) implements CustomPacketPayloa
     }
 
     public void handle(final Player player) {
-        if (player instanceof ServerPlayer serverPlayer && player.containerMenu instanceof UpgradeContainerMenu menu && menu.containerId == this.containerId) {
+        if (!(player instanceof ServerPlayer serverPlayer)) {
+            return;
+        }
+
+        if (player.containerMenu instanceof UpgradeContainerMenu menu && menu.containerId == this.containerId) {
+            menu.returnToGrid(serverPlayer);
+        } else if (player.containerMenu instanceof MagnetContainerMenu menu && menu.containerId == this.containerId && menu.stillValid(player)) {
             menu.returnToGrid(serverPlayer);
         }
     }

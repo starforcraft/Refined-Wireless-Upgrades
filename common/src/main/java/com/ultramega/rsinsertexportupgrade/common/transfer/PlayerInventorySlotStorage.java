@@ -29,6 +29,14 @@ public final class PlayerInventorySlotStorage implements Storage {
         this.slotIndex = slotIndex;
     }
 
+    public ItemStackAccess contentsAccess() {
+        return new ItemStackAccess(this::getStack, updated -> {
+            final EquipmentSlot equipmentSlot = this.getEquipmentSlot();
+            return this.isValidSlot()
+                && (equipmentSlot == null || ItemStack.isSameItem(this.getStack(), updated) || this.player.getEquipmentSlotForItem(updated) == equipmentSlot);
+        }, this::setStack);
+    }
+
     @Override
     public Collection<ResourceAmount> getAll() {
         final ItemStack stack = this.getStack();

@@ -1,7 +1,9 @@
 package com.ultramega.rsinsertexportupgrade.fabric;
 
 import com.ultramega.rsinsertexportupgrade.common.AbstractClientModInitializer;
+import com.ultramega.rsinsertexportupgrade.common.network.SyncSelectedCurioSlotsPayload;
 import com.ultramega.rsinsertexportupgrade.common.network.SyncSelectedInventorySlotsPayload;
+import com.ultramega.rsinsertexportupgrade.common.network.SyncUpgradeSlotCountPayload;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
@@ -19,6 +21,15 @@ public class ClientModInitializerImpl extends AbstractClientModInitializer imple
             SyncSelectedInventorySlotsPayload.TYPE,
             (payload, context) -> payload.handle(context.player())
         );
+        ClientPlayNetworking.registerGlobalReceiver(
+            SyncSelectedCurioSlotsPayload.TYPE,
+            (payload, context) -> payload.handle(context.player())
+        );
+        ClientPlayNetworking.registerGlobalReceiver(
+            SyncUpgradeSlotCountPayload.TYPE,
+            (payload, context) -> payload.handle()
+        );
+
         registerScreens(new com.refinedmods.refinedstorage.common.AbstractClientModInitializer.ScreenRegistration() {
             @Override
             public <M extends AbstractContainerMenu, U extends Screen & MenuAccess<M>> void register(

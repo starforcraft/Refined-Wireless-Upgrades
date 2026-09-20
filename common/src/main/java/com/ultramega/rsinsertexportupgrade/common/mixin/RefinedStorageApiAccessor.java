@@ -9,5 +9,5 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 @Mixin(RefinedStorageApiImpl.class)
 public interface RefinedStorageApiAccessor {
     @Accessor(value = "slotReferenceProvider", remap = false)
-    CompositeSlotReferenceProvider insertExport$getSlotReferenceProvider();
+    CompositeSlotReferenceProvider wirelessUpgrades$getSlotReferenceProvider();
 }

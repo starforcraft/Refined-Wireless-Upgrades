@@ -1,6 +1,6 @@
 package com.ultramega.rsinsertexportupgrade.fabric;
 
-import com.ultramega.rsinsertexportupgrade.common.DefaultEnergyUsage;
+import com.ultramega.rsinsertexportupgrade.common.DefaultValues;
 
 import me.shedaniel.autoconfig.AutoConfig;
 import me.shedaniel.autoconfig.ConfigData;
@@ -25,9 +25,17 @@ public class ConfigImpl implements ConfigData, com.ultramega.rsinsertexportupgra
     }
 
     private static class UpgradeEntryImpl implements UpgradeEntry {
-        private long insertUpgradeEnergyUsage = DefaultEnergyUsage.INSERT_UPGRADE;
-        private long exportUpgradeEnergyUsage = DefaultEnergyUsage.EXPORT_UPGRADE;
-        private long blockPickerUpgradeEnergyUsage = DefaultEnergyUsage.BLOCK_PICKER_UPGRADE;
+        private long insertUpgradeEnergyUsage = DefaultValues.INSERT_UPGRADE_ENERGY_USAGE;
+        private long exportUpgradeEnergyUsage = DefaultValues.EXPORT_UPGRADE_ENERGY_USAGE;
+        private long blockPickerUpgradeEnergyUsage = DefaultValues.BLOCK_PICKER_UPGRADE_ENERGY_USAGE;
+        private long magnetUpgradeEnergyUsage = DefaultValues.MAGNET_UPGRADE_ENERGY_USAGE;
+        private double magnetUpgradeRange = DefaultValues.MAGNET_UPGRADE_RANGE;
+        private long energyCapacityUpgradeCapacity = DefaultValues.ENERGY_CAPACITY_UPGRADE_CAPACITY;
+
+        @Override
+        public long getEnergyCapacityUpgradeCapacity() {
+            return Math.max(0, this.energyCapacityUpgradeCapacity);
+        }
 
         @Override
         public long getInsertUpgradeEnergyUsage() {
@@ -42,6 +50,16 @@ public class ConfigImpl implements ConfigData, com.ultramega.rsinsertexportupgra
         @Override
         public long getBlockPickerUpgradeEnergyUsage() {
             return this.blockPickerUpgradeEnergyUsage;
+        }
+
+        @Override
+        public long getMagnetUpgradeEnergyUsage() {
+            return Math.max(0, this.magnetUpgradeEnergyUsage);
+        }
+
+        @Override
+        public double getMagnetUpgradeRange() {
+            return Double.isFinite(this.magnetUpgradeRange) ? Math.clamp(this.magnetUpgradeRange, 1, 32) : 6;
         }
     }
 }

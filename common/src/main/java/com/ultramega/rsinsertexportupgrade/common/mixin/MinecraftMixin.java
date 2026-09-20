@@ -39,7 +39,7 @@ public class MinecraftMixin {
     public HitResult hitResult;
 
     @Inject(method = "pickBlock", at = @At("TAIL"), remap = false)
-    private void insertExport$pickBlock(final CallbackInfo ci) {
+    private void wirelessUpgrades$pickBlock(final CallbackInfo ci) {
         if (this.player == null || this.level == null || this.gameMode == null
             || this.gameMode.getPlayerMode() != GameType.SURVIVAL || !(this.hitResult instanceof BlockHitResult blockHitResult)) {
             return;
@@ -48,14 +48,14 @@ public class MinecraftMixin {
         final BlockState blockState = this.level.getBlockState(blockHitResult.getBlockPos());
         final ItemStack pickedStack = Platform.INSTANCE.getCloneItemStack(blockState, this.level, blockHitResult, this.player);
         if (!pickedStack.isEmpty()
-            && !insertExport$contains(this.player.getInventory(), pickedStack)
+            && !wirelessUpgrades$contains(this.player.getInventory(), pickedStack)
             && this.player.getInventory().getFreeSlot() != Inventory.NOT_FOUND_INDEX) {
             Platform.INSTANCE.sendPacketToServer(new BlockPickerPayload(blockHitResult.getBlockPos(), blockHitResult.getDirection()));
         }
     }
 
     @Unique
-    private static boolean insertExport$contains(final Inventory inventory, final ItemStack pickedStack) {
+    private static boolean wirelessUpgrades$contains(final Inventory inventory, final ItemStack pickedStack) {
         for (int slot = 0; slot < inventory.getContainerSize(); ++slot) {
             if (ItemStack.isSameItemSameComponents(inventory.getItem(slot), pickedStack)) {
                 return true;

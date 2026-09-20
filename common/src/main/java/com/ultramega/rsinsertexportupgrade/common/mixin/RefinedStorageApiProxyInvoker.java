@@ -9,5 +9,5 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 @Mixin(RefinedStorageApiProxy.class)
 public interface RefinedStorageApiProxyInvoker {
     @Invoker(value = "ensureLoaded", remap = false)
-    RefinedStorageApi insertExport$ensureLoaded();
+    RefinedStorageApi wirelessUpgrades$ensureLoaded();
 }

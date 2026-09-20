@@ -1,7 +1,12 @@
 package com.ultramega.rsinsertexportupgrade.common.menu;
 
 import com.refinedmods.refinedstorage.api.resource.filter.FilterMode;
+import com.refinedmods.refinedstorage.common.api.support.resource.ResourceContainer;
+import com.refinedmods.refinedstorage.common.support.resource.ResourceContainerImpl;
 import com.refinedmods.refinedstorage.common.util.ContainerUtil;
+
+import java.util.HashMap;
+import java.util.Map;
 
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponents;
@@ -16,11 +21,14 @@ import static com.ultramega.rsinsertexportupgrade.common.util.InsertExportIdenti
 public final class UpgradeConfiguration {
     public static final int DEFAULT_BLOCK_PICKER_AMOUNT = 1;
     public static final int MAX_BLOCK_PICKER_AMOUNT = 64;
+    public static final int MAX_CURIO_SELECTIONS = 1024;
 
     private static final String CONFIGURATION_TAG = "Configuration";
     private static final String FILTER_TAG = "Filter";
+    private static final String RESOURCE_FILTER_TAG = "ResourceFilter";
     private static final String UPGRADES_TAG = "Upgrades";
     private static final String SELECTED_INVENTORY_SLOTS_TAG = "SelectedInventorySlots";
+    private static final String SELECTED_CURIO_SLOTS_TAG = "SelectedCurioSlots";
     private static final String FILTER_MODE_TAG = "FilterMode";
     private static final String FUZZY_MODE_TAG = "FuzzyMode";
     private static final String BLOCK_PICKER_AMOUNT_TAG = "BlockPickerAmount";
@@ -43,6 +51,33 @@ public final class UpgradeConfiguration {
 
     public static void setSelectedInventorySlots(final ItemStack stack, final int[] selectedInventorySlots) {
         updateConfiguration(stack, configuration -> configuration.putIntArray(SELECTED_INVENTORY_SLOTS_TAG, selectedInventorySlots));
+    }
+
+    public static Map<String, Integer> getSelectedCurioSlots(final ItemStack stack) {
+        return getSelectedCurioSlots(getConfiguration(stack));
+    }
+
+    private static Map<String, Integer> getSelectedCurioSlots(final CompoundTag configuration) {
+        final CompoundTag stored = configuration.getCompound(SELECTED_CURIO_SLOTS_TAG);
+        final Map<String, Integer> selected = new HashMap<>();
+        for (final String key : stored.getAllKeys()) {
+            final int value = stored.getInt(key);
+            if (key.length() <= 256 && value > 0 && value <= UpgradeContainerMenu.FILTER_SLOT_COUNT) {
+                selected.put(key, value);
+                if (selected.size() >= MAX_CURIO_SELECTIONS) {
+                    break;
+                }
+            }
+        }
+        return Map.copyOf(selected);
+    }
+
+    public static void setSelectedCurioSlots(final ItemStack stack, final Map<String, Integer> selected) {
+        updateConfiguration(stack, configuration -> {
+            final CompoundTag stored = new CompoundTag();
+            selected.forEach(stored::putInt);
+            configuration.put(SELECTED_CURIO_SLOTS_TAG, stored);
+        });
     }
 
     public static FilterMode getFilterMode(final ItemStack stack) {
@@ -86,18 +121,32 @@ public final class UpgradeConfiguration {
     }
 
     public static void loadFilter(final ItemStack stack,
-                                  final Container filter,
+                                  final ResourceContainer filter,
                                   final HolderLookup.Provider provider) {
-        final CompoundTag configuration = getConfiguration(stack);
-        if (configuration.contains(FILTER_TAG)) {
-            ContainerUtil.read(configuration.getCompound(FILTER_TAG), filter, provider);
+        loadFilter(getConfiguration(stack), filter, provider);
+    }
+
+    private static void loadFilter(final CompoundTag configuration,
+                                   final ResourceContainer filter,
+                                   final HolderLookup.Provider provider) {
+        if (configuration.contains(RESOURCE_FILTER_TAG)) {
+            filter.fromTag(configuration.getCompound(RESOURCE_FILTER_TAG), provider);
+        } else if (configuration.contains(FILTER_TAG)) {
+            final SimpleContainer legacy = new SimpleContainer(filter.size());
+            ContainerUtil.read(configuration.getCompound(FILTER_TAG), legacy, provider);
+            for (int slot = 0; slot < legacy.getContainerSize(); ++slot) {
+                filter.change(slot, legacy.getItem(slot), false);
+            }
         }
     }
 
     public static void saveFilter(final ItemStack stack,
-                                  final Container filter,
+                                  final ResourceContainer filter,
                                   final HolderLookup.Provider provider) {
-        updateConfiguration(stack, configuration -> configuration.put(FILTER_TAG, ContainerUtil.write(filter, provider)));
+        updateConfiguration(stack, configuration -> {
+            configuration.put(RESOURCE_FILTER_TAG, filter.toTag(provider));
+            configuration.remove(FILTER_TAG);
+        });
     }
 
     public static void loadUpgrades(final ItemStack stack,
@@ -119,13 +168,14 @@ public final class UpgradeConfiguration {
                                                                final HolderLookup.Provider provider) {
         final CompoundTag configuration = getConfiguration(stack);
         final int[] selectedInventorySlots = getSelectedInventorySlots(configuration);
-        final boolean hasSelectedSlots = hasSelectedSlots(selectedInventorySlots);
-        final SimpleContainer filter = new SimpleContainer(UpgradeContainerMenu.FILTER_SLOT_COUNT);
+        final Map<String, Integer> selectedCurioSlots = getSelectedCurioSlots(configuration);
+        final boolean hasSelectedSlots = hasSelectedSlots(selectedInventorySlots) || !selectedCurioSlots.isEmpty();
+        final ResourceContainer filter = ResourceContainerImpl.createForFilter(UpgradeContainerMenu.FILTER_SLOT_COUNT);
         boolean hasStackUpgrade = false;
         boolean hasAutocraftingUpgrade = false;
 
-        if (hasSelectedSlots && configuration.contains(FILTER_TAG)) {
-            ContainerUtil.read(configuration.getCompound(FILTER_TAG), filter, provider);
+        if (hasSelectedSlots) {
+            loadFilter(configuration, filter, provider);
         }
         if (hasSelectedSlots && configuration.contains(UPGRADES_TAG)) {
             final SimpleContainer upgrades = new SimpleContainer(UPGRADE_SLOT_COUNT);
@@ -139,6 +189,7 @@ public final class UpgradeConfiguration {
 
         return new RuntimeConfiguration(
             selectedInventorySlots,
+            selectedCurioSlots,
             hasSelectedSlots,
             getFilterMode(configuration),
             configuration.getBoolean(FUZZY_MODE_TAG),
@@ -180,10 +231,11 @@ public final class UpgradeConfiguration {
     }
 
     public record RuntimeConfiguration(int[] selectedInventorySlots,
+                                       Map<String, Integer> selectedCurioSlots,
                                        boolean hasSelectedSlots,
                                        FilterMode filterMode,
                                        boolean fuzzyMode,
-                                       SimpleContainer filter,
+                                       ResourceContainer filter,
                                        boolean hasStackUpgrade,
                                        boolean hasAutocraftingUpgrade) {
     }

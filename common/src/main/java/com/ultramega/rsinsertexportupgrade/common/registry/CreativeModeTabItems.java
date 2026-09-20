@@ -12,5 +12,7 @@ public final class CreativeModeTabItems {
         consumer.accept(Items.INSTANCE.getInsertUpgrade().getDefaultInstance());
         consumer.accept(Items.INSTANCE.getExportUpgrade().getDefaultInstance());
         consumer.accept(Items.INSTANCE.getBlockPickerUpgrade().getDefaultInstance());
+        consumer.accept(Items.INSTANCE.getMagnetUpgrade().getDefaultInstance());
+        consumer.accept(Items.INSTANCE.getEnergyCapacityUpgrade().getDefaultInstance());
     }
 }

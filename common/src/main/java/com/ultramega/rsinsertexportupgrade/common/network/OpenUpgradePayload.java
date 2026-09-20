@@ -34,12 +34,19 @@ public record OpenUpgradePayload(UpgradeType upgradeType) implements CustomPacke
             return;
         }
 
-        final SlotReference gridSlotReference = gridSlotReferenceAccessor.insertexport$getGridSlotReference();
+        final SlotReference gridSlotReference = gridSlotReferenceAccessor.wirelessUpgrades$getGridSlotReference();
         if (gridSlotReference == null) {
             return;
         }
 
-        final Item expectedUpgrade = this.upgradeType == UpgradeType.INSERT ? Items.INSTANCE.getInsertUpgrade() : Items.INSTANCE.getExportUpgrade();
+        if (!player.containerMenu.stillValid(player)) {
+            return;
+        }
+        final Item expectedUpgrade = switch (this.upgradeType) {
+            case INSERT -> Items.INSTANCE.getInsertUpgrade();
+            case EXPORT -> Items.INSTANCE.getExportUpgrade();
+            case MAGNET -> Items.INSTANCE.getMagnetUpgrade();
+        };
         final Slot sourceSlot = player.containerMenu.slots.stream()
             .filter(UpgradeSlot.class::isInstance)
             .filter(slot -> slot.getItem().is(expectedUpgrade))

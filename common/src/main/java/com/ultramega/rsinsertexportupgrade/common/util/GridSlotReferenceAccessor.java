@@ -5,6 +5,8 @@ import com.refinedmods.refinedstorage.common.api.support.slotreference.SlotRefer
 import javax.annotation.Nullable;
 
 public interface GridSlotReferenceAccessor {
+    int wirelessUpgrades$getUpgradeSlotCount();
+
     @Nullable
-    SlotReference insertexport$getGridSlotReference();
+    SlotReference wirelessUpgrades$getGridSlotReference();
 }

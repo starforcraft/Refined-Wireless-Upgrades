@@ -1,15 +1,15 @@
 modLoader="javafml"
 loaderVersion = "[2,)"
-issueTrackerURL="https://github.com/starforcraft/RS-Insert-Export-Upgrade/issues/new/choose"
+issueTrackerURL="https://github.com/starforcraft/Refined-Wireless-Upgrades/issues/new/choose"
 license="MIT"
 [[mods]]
 modId="rsinsertexportupgrade"
 version = "${version}"
-displayName="RS Insert Export Upgrade"
-displayURL="https://www.curseforge.com/minecraft/mc-mods/rs-insert-export-upgrade"
+displayName="Refined Wireless Upgrades"
+displayURL="https://www.curseforge.com/minecraft/mc-mods/refined-wireless-upgrades"
 logoFile="logo.png"
 authors="Ultramega"
-description="Adds an Insert and Export Upgrade which can be installed into any Wireless Grid."
+description="Adds various upgrade cards which can be installed into any Wireless Grid."
 
 [[mixins]]
 config="rsinsertexportupgrade.mixins.json"
@@ -26,4 +26,11 @@ modId="minecraft"
 type="required"
 versionRange="[1.21.1,)"
 ordering="NONE"
+side="BOTH"
+
+[[dependencies.rsinsertexportupgrade]]
+modId="curios"
+type="optional"
+versionRange="[9.5.1,10)"
+ordering="AFTER"
 side="BOTH"

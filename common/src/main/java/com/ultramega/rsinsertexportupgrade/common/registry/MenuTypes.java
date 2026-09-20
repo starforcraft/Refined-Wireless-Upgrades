@@ -1,5 +1,6 @@
 package com.ultramega.rsinsertexportupgrade.common.registry;
 
+import com.ultramega.rsinsertexportupgrade.common.menu.MagnetContainerMenu;
 import com.ultramega.rsinsertexportupgrade.common.menu.UpgradeContainerMenu;
 
 import java.util.function.Supplier;
@@ -16,6 +17,8 @@ public final class MenuTypes {
     private Supplier<MenuType<UpgradeContainerMenu>> insertUpgrade;
     @Nullable
     private Supplier<MenuType<UpgradeContainerMenu>> exportUpgrade;
+    @Nullable
+    private Supplier<MenuType<MagnetContainerMenu>> magnetUpgrade;
 
     private MenuTypes() {
     }
@@ -34,5 +37,13 @@ public final class MenuTypes {
 
     public void setExportUpgrade(final Supplier<MenuType<UpgradeContainerMenu>> exportUpgrade) {
         this.exportUpgrade = exportUpgrade;
+    }
+
+    public MenuType<MagnetContainerMenu> getMagnetUpgrade() {
+        return requireNonNull(this.magnetUpgrade).get();
+    }
+
+    public void setMagnetUpgrade(final Supplier<MenuType<MagnetContainerMenu>> supplier) {
+        this.magnetUpgrade = supplier;
     }
 }

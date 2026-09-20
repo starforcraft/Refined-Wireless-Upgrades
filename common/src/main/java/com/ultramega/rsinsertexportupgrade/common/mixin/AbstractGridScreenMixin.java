@@ -1,34 +1,29 @@
 package com.ultramega.rsinsertexportupgrade.common.mixin;
 
-import com.ultramega.rsinsertexportupgrade.common.menu.UpgradeConfiguration;
-import com.ultramega.rsinsertexportupgrade.common.network.OpenUpgradePayload;
-import com.ultramega.rsinsertexportupgrade.common.network.UpdateBlockPickerAmountPayload;
-import com.ultramega.rsinsertexportupgrade.common.registry.Items;
+import com.ultramega.rsinsertexportupgrade.common.api.client.WirelessGridSideButtonContext;
+import com.ultramega.rsinsertexportupgrade.common.api.client.WirelessGridSideButtonRegistry;
 import com.ultramega.rsinsertexportupgrade.common.screen.UpgradeScreenNavigation;
-import com.ultramega.rsinsertexportupgrade.common.screen.widget.BlockPickerAmountSideButtonWidget;
-import com.ultramega.rsinsertexportupgrade.common.screen.widget.UpgradeSideButtonWidget;
+import com.ultramega.rsinsertexportupgrade.common.util.GridSlotReferenceAccessor;
 import com.ultramega.rsinsertexportupgrade.common.util.IGridUpgrade;
-import com.ultramega.rsinsertexportupgrade.common.util.UpgradeSideButtonType;
 import com.ultramega.rsinsertexportupgrade.common.util.UpgradeSlotsExtraAreaProvider;
-import com.ultramega.rsinsertexportupgrade.common.util.UpgradeType;
+import com.ultramega.rsinsertexportupgrade.common.util.WirelessGridUpgradeLayout;
 
-import com.refinedmods.refinedstorage.common.Platform;
 import com.refinedmods.refinedstorage.common.grid.AbstractGridContainerMenu;
 import com.refinedmods.refinedstorage.common.grid.screen.AbstractGridScreen;
 import com.refinedmods.refinedstorage.common.support.stretching.AbstractStretchingScreen;
 import com.refinedmods.refinedstorage.common.support.widget.AbstractSideButtonWidget;
 import com.refinedmods.refinedstorage.common.support.widget.TextMarquee;
-import com.refinedmods.refinedstorage.common.upgrade.UpgradeSlot;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import javax.annotation.Nullable;
+import java.util.Map;
 
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Item;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -43,41 +38,23 @@ import static com.ultramega.rsinsertexportupgrade.common.util.InsertExportIdenti
 @Mixin(AbstractGridScreen.class)
 public abstract class AbstractGridScreenMixin<T extends AbstractGridContainerMenu> extends AbstractStretchingScreen<T> implements UpgradeSlotsExtraAreaProvider {
     @Unique
-    private static final ResourceLocation UPGRADE_SLOTS = createInsertExportIdentifier("upgrade_slots");
+    private static final ResourceLocation UPGRADE_SLOTS = createInsertExportIdentifier("textures/gui/sprites/upgrade_slots.png");
 
     @Unique
-    private static final int UPGRADE_SLOTS_X_OFFSET = 4;
-    @Unique
-    private static final int UPGRADE_SLOTS_WIDTH = 30;
-    @Unique
-    private static final int UPGRADE_SLOTS_HEIGHT = 46;
+    private static final int UPGRADE_SLOTS_TEXTURE_HEIGHT = 46;
 
     @Shadow
     @Final
     private Inventory playerInventory;
 
     @Unique
-    @Nullable
-    private UpgradeSideButtonWidget insertExport$insertUpgradeSideButtonWidget;
-    @Unique
-    @Nullable
-    private UpgradeSideButtonWidget insertExport$exportUpgradeSideButtonWidget;
-    @Unique
-    @Nullable
-    private BlockPickerAmountSideButtonWidget insertExport$blockPickerAmountSideButtonWidget;
+    private final Map<Item, AbstractSideButtonWidget> wirelessUpgrades$sideButtons = new HashMap<>();
 
     @Unique
-    @Nullable
-    private Rect2i insertExport$insertUpgradeSideButtonExclusionZone;
-    @Unique
-    @Nullable
-    private Rect2i insertExport$exportUpgradeSideButtonExclusionZone;
-    @Unique
-    @Nullable
-    private Rect2i insertExport$blockPickerAmountSideButtonExclusionZone;
+    private final List<Rect2i> wirelessUpgrades$sideButtonExclusionZones = new ArrayList<>();
 
     @Unique
-    private boolean insertExport$sideButtonsInitialized;
+    private boolean wirelessUpgrades$sideButtonsInitialized;
 
     protected AbstractGridScreenMixin(final T menu,
                                       final Inventory playerInventory,
@@ -95,18 +72,32 @@ public abstract class AbstractGridScreenMixin<T extends AbstractGridContainerMen
             return;
         }
 
-        if (!this.insertExport$sideButtonsInitialized) {
-            this.insertExport$refreshSideButtons();
-            this.insertExport$sideButtonsInitialized = true;
+        if (!this.wirelessUpgrades$sideButtonsInitialized) {
+            this.wirelessUpgrades$refreshSideButtons();
+            this.wirelessUpgrades$sideButtonsInitialized = true;
         }
 
-        graphics.blitSprite(
-            UPGRADE_SLOTS,
-            x + this.imageWidth + UPGRADE_SLOTS_X_OFFSET,
-            y - TOP_HEIGHT,
-            UPGRADE_SLOTS_WIDTH,
-            UPGRADE_SLOTS_HEIGHT
-        );
+        final int count = ((GridSlotReferenceAccessor) this.getMenu()).wirelessUpgrades$getUpgradeSlotCount();
+        for (int column = 0; column < WirelessGridUpgradeLayout.columns(count); ++column) {
+            final int panelX = x + WirelessGridUpgradeLayout.FIRST_SLOT_X - WirelessGridUpgradeLayout.SLOT_INSET_X + column * WirelessGridUpgradeLayout.COLUMN_WIDTH;
+            final int panelY = y - TOP_HEIGHT;
+            final int slotRows = WirelessGridUpgradeLayout.rows(count, column);
+            this.wirelessUpgrades$blitUpgradeStrip(graphics, panelX, panelY, 0, WirelessGridUpgradeLayout.BORDER);
+            for (int row = 0; row < slotRows; ++row) {
+                this.wirelessUpgrades$blitUpgradeStrip(graphics, panelX,
+                    panelY + WirelessGridUpgradeLayout.BORDER + row * WirelessGridUpgradeLayout.ROW_HEIGHT,
+                    WirelessGridUpgradeLayout.BORDER, WirelessGridUpgradeLayout.ROW_HEIGHT);
+            }
+            this.wirelessUpgrades$blitUpgradeStrip(graphics, panelX,
+                panelY + WirelessGridUpgradeLayout.BORDER + slotRows * WirelessGridUpgradeLayout.ROW_HEIGHT,
+                UPGRADE_SLOTS_TEXTURE_HEIGHT - WirelessGridUpgradeLayout.BORDER, WirelessGridUpgradeLayout.BORDER);
+        }
+    }
+
+    @Unique
+    private void wirelessUpgrades$blitUpgradeStrip(final GuiGraphics graphics, final int x, final int y, final int sourceY, final int height) {
+        graphics.blit(UPGRADE_SLOTS, x, y, 0, sourceY, WirelessGridUpgradeLayout.COLUMN_WIDTH, height,
+            WirelessGridUpgradeLayout.COLUMN_WIDTH, UPGRADE_SLOTS_TEXTURE_HEIGHT);
     }
 
     @Inject(method = "init", at = @At("TAIL"), remap = false)
@@ -117,179 +108,96 @@ public abstract class AbstractGridScreenMixin<T extends AbstractGridContainerMen
 
         UpgradeScreenNavigation.restoreMousePosition();
 
-        this.insertExport$insertUpgradeSideButtonWidget = null;
-        this.insertExport$exportUpgradeSideButtonWidget = null;
-        this.insertExport$blockPickerAmountSideButtonWidget = null;
-        this.insertExport$insertUpgradeSideButtonExclusionZone = null;
-        this.insertExport$exportUpgradeSideButtonExclusionZone = null;
-        this.insertExport$blockPickerAmountSideButtonExclusionZone = null;
-        this.insertExport$sideButtonsInitialized = false;
+        this.wirelessUpgrades$sideButtons.clear();
+        this.wirelessUpgrades$removeUpgradeSideButtonExclusionZones();
+        this.wirelessUpgrades$sideButtonsInitialized = false;
     }
 
     @Inject(method = "containerTick", at = @At("TAIL"), remap = false)
     private void containerTick(final CallbackInfo ci) {
-        this.insertExport$refreshSideButtons();
-        this.insertExport$sideButtonsInitialized = true;
+        this.wirelessUpgrades$refreshSideButtons();
+        this.wirelessUpgrades$sideButtonsInitialized = true;
     }
 
     @Unique
-    private void insertExport$refreshSideButtons() {
+    private void wirelessUpgrades$refreshSideButtons() {
         if (!(this.getMenu() instanceof IGridUpgrade)) {
             return;
         }
-        final boolean insertUpgradeInstalled = this.insertExport$isUpgradeInstalled(Items.INSTANCE.getInsertUpgrade());
-        final boolean exportUpgradeInstalled = this.insertExport$isUpgradeInstalled(Items.INSTANCE.getExportUpgrade());
-        final boolean blockPickerUpgradeInstalled = this.insertExport$isUpgradeInstalled(Items.INSTANCE.getBlockPickerUpgrade());
-
-        if (insertUpgradeInstalled && this.insertExport$insertUpgradeSideButtonWidget == null) {
-            this.insertExport$insertUpgradeSideButtonWidget = new UpgradeSideButtonWidget(
-                UpgradeType.INSERT,
-                btn -> this.insertExport$openUpgrade(UpgradeType.INSERT)
-            );
-            this.insertExport$insertUpgradeSideButtonWidget.visible = true;
-            this.addRenderableWidget(this.insertExport$insertUpgradeSideButtonWidget);
-        } else if (!insertUpgradeInstalled && this.insertExport$insertUpgradeSideButtonWidget != null) {
-            this.removeWidget(this.insertExport$insertUpgradeSideButtonWidget);
-            this.insertExport$insertUpgradeSideButtonWidget = null;
+        for (final WirelessGridSideButtonRegistry.Entry entry : WirelessGridSideButtonRegistry.getEntries()) {
+            final WirelessGridSideButtonContext context = new WirelessGridSideButtonContext((AbstractGridScreen<?>) (Object) this, this.playerInventory, entry.upgrade());
+            final AbstractSideButtonWidget existing = this.wirelessUpgrades$sideButtons.get(entry.upgrade());
+            if (context.getUpgradeSlot() >= 0 && existing == null) {
+                final AbstractSideButtonWidget button = entry.create(context);
+                button.visible = true;
+                this.wirelessUpgrades$sideButtons.put(entry.upgrade(), button);
+                this.addRenderableWidget(button);
+            } else if (context.getUpgradeSlot() < 0 && existing != null) {
+                this.removeWidget(existing);
+                this.wirelessUpgrades$sideButtons.remove(entry.upgrade());
+            }
         }
-
-        if (exportUpgradeInstalled && this.insertExport$exportUpgradeSideButtonWidget == null) {
-            this.insertExport$exportUpgradeSideButtonWidget = new UpgradeSideButtonWidget(
-                UpgradeType.EXPORT,
-                btn -> this.insertExport$openUpgrade(UpgradeType.EXPORT)
-            );
-            this.insertExport$exportUpgradeSideButtonWidget.visible = true;
-            this.addRenderableWidget(this.insertExport$exportUpgradeSideButtonWidget);
-        } else if (!exportUpgradeInstalled && this.insertExport$exportUpgradeSideButtonWidget != null) {
-            this.removeWidget(this.insertExport$exportUpgradeSideButtonWidget);
-            this.insertExport$exportUpgradeSideButtonWidget = null;
-        }
-
-        if (blockPickerUpgradeInstalled && this.insertExport$blockPickerAmountSideButtonWidget == null) {
-            this.insertExport$blockPickerAmountSideButtonWidget = new BlockPickerAmountSideButtonWidget(
-                this::insertExport$getBlockPickerAmount,
-                amount -> Platform.INSTANCE.sendPacketToServer(new UpdateBlockPickerAmountPayload(
-                    this.getMenu().containerId,
-                    amount
-                )),
-                this,
-                this.playerInventory
-            );
-            this.insertExport$blockPickerAmountSideButtonWidget.visible = true;
-            this.addRenderableWidget(this.insertExport$blockPickerAmountSideButtonWidget);
-        } else if (!blockPickerUpgradeInstalled && this.insertExport$blockPickerAmountSideButtonWidget != null) {
-            this.removeWidget(this.insertExport$blockPickerAmountSideButtonWidget);
-            this.insertExport$blockPickerAmountSideButtonWidget = null;
-        }
-
-        this.insertExport$layoutSideButtons();
+        this.wirelessUpgrades$layoutSideButtons();
     }
 
     @Unique
-    private void insertExport$layoutSideButtons() {
-        this.insertExport$removeUpgradeSideButtonExclusionZones();
-
+    private void wirelessUpgrades$layoutSideButtons() {
+        this.wirelessUpgrades$removeUpgradeSideButtonExclusionZones();
         int nextY = this.topPos + this.getSideButtonY();
         for (final GuiEventListener child : this.children()) {
             if (child instanceof AbstractSideButtonWidget sideButton
-                && sideButton != this.insertExport$insertUpgradeSideButtonWidget
-                && sideButton != this.insertExport$exportUpgradeSideButtonWidget
-                && sideButton != this.insertExport$blockPickerAmountSideButtonWidget
-                && sideButton.visible) {
+                && !this.wirelessUpgrades$sideButtons.containsValue(sideButton) && sideButton.visible) {
                 nextY = Math.max(nextY, sideButton.getY() + sideButton.getHeight() + 2);
             }
         }
-
-        if (this.insertExport$insertUpgradeSideButtonWidget != null) {
-            nextY = this.insertExport$positionSideButton(
-                this.insertExport$insertUpgradeSideButtonWidget,
-                nextY,
-                UpgradeSideButtonType.INSERT
-            );
-        }
-        if (this.insertExport$exportUpgradeSideButtonWidget != null) {
-            nextY = this.insertExport$positionSideButton(
-                this.insertExport$exportUpgradeSideButtonWidget,
-                nextY,
-                UpgradeSideButtonType.EXPORT
-            );
-        }
-        if (this.insertExport$blockPickerAmountSideButtonWidget != null) {
-            this.insertExport$positionSideButton(
-                this.insertExport$blockPickerAmountSideButtonWidget,
-                nextY,
-                UpgradeSideButtonType.BLOCK_PICKER_AMOUNT
-            );
+        for (final WirelessGridSideButtonRegistry.Entry entry : WirelessGridSideButtonRegistry.getEntries()) {
+            final AbstractSideButtonWidget button = this.wirelessUpgrades$sideButtons.get(entry.upgrade());
+            if (button != null && button.visible) {
+                button.setX(this.getSideButtonX());
+                button.setY(nextY);
+                final Rect2i zone = new Rect2i(button.getX(), button.getY(), button.getWidth(), button.getHeight());
+                this.getExclusionZones().add(zone);
+                this.wirelessUpgrades$sideButtonExclusionZones.add(zone);
+                nextY += button.getHeight() + 2;
+            }
         }
     }
 
     @Unique
-    private int insertExport$positionSideButton(final AbstractSideButtonWidget button,
-                                                final int y,
-                                                final UpgradeSideButtonType type) {
-        button.setX(this.getSideButtonX());
-        button.setY(y);
-        final Rect2i exclusionZone = new Rect2i(button.getX(), button.getY(), button.getWidth(), button.getHeight());
-        this.getExclusionZones().add(exclusionZone);
-        switch (type) {
-            case INSERT -> this.insertExport$insertUpgradeSideButtonExclusionZone = exclusionZone;
-            case EXPORT -> this.insertExport$exportUpgradeSideButtonExclusionZone = exclusionZone;
-            case BLOCK_PICKER_AMOUNT -> this.insertExport$blockPickerAmountSideButtonExclusionZone = exclusionZone;
-        }
-        return y + button.getHeight() + 2;
+    private void wirelessUpgrades$removeUpgradeSideButtonExclusionZones() {
+        this.getExclusionZones().removeAll(this.wirelessUpgrades$sideButtonExclusionZones);
+        this.wirelessUpgrades$sideButtonExclusionZones.clear();
     }
 
-    @Unique
-    private void insertExport$removeUpgradeSideButtonExclusionZones() {
-        if (this.insertExport$insertUpgradeSideButtonExclusionZone != null) {
-            this.getExclusionZones().remove(this.insertExport$insertUpgradeSideButtonExclusionZone);
-            this.insertExport$insertUpgradeSideButtonExclusionZone = null;
+    @Override
+    protected boolean hasClickedOutside(final double mouseX, final double mouseY, final int left, final int top, final int button) {
+        // The upgrade panel is outside the vanilla screen bounds
+        // Fabric also checks these bounds on mouse release, which otherwise drops the picked-up upgrade
+        for (final Rect2i area : this.wirelessUpgrades$getUpgradeSlotsExtraAreas()) {
+            if (mouseX >= area.getX() && mouseX < area.getX() + area.getWidth()
+                && mouseY >= area.getY() && mouseY < area.getY() + area.getHeight()) {
+                return false;
+            }
         }
-        if (this.insertExport$exportUpgradeSideButtonExclusionZone != null) {
-            this.getExclusionZones().remove(this.insertExport$exportUpgradeSideButtonExclusionZone);
-            this.insertExport$exportUpgradeSideButtonExclusionZone = null;
-        }
-        if (this.insertExport$blockPickerAmountSideButtonExclusionZone != null) {
-            this.getExclusionZones().remove(this.insertExport$blockPickerAmountSideButtonExclusionZone);
-            this.insertExport$blockPickerAmountSideButtonExclusionZone = null;
-        }
-    }
-
-    @Unique
-    private void insertExport$openUpgrade(final UpgradeType type) {
-        UpgradeScreenNavigation.rememberMousePosition();
-        Platform.INSTANCE.sendPacketToServer(new OpenUpgradePayload(type));
-    }
-
-    @Unique
-    private boolean insertExport$isUpgradeInstalled(final Item upgrade) {
-        return this.getMenu().slots.stream()
-            .filter(UpgradeSlot.class::isInstance)
-            .anyMatch(slot -> slot.getItem().is(upgrade));
-    }
-
-    @Unique
-    private int insertExport$getBlockPickerAmount() {
-        return this.getMenu().slots.stream()
-            .filter(UpgradeSlot.class::isInstance)
-            .map(Slot::getItem)
-            .filter(stack -> stack.is(Items.INSTANCE.getBlockPickerUpgrade()))
-            .findFirst()
-            .map(UpgradeConfiguration::getBlockPickerAmount)
-            .orElse(UpgradeConfiguration.DEFAULT_BLOCK_PICKER_AMOUNT);
+        return super.hasClickedOutside(mouseX, mouseY, left, top, button);
     }
 
     @Unique
     @Override
-    public List<Rect2i> insertexport$getUpgradeSlotsExtraAreas() {
+    public List<Rect2i> wirelessUpgrades$getUpgradeSlotsExtraAreas() {
         if (!(this.getMenu() instanceof IGridUpgrade)) {
             return List.of();
         }
-        return List.of(new Rect2i(
-            this.leftPos + this.imageWidth + UPGRADE_SLOTS_X_OFFSET,
-            this.topPos,
-            UPGRADE_SLOTS_WIDTH,
-            UPGRADE_SLOTS_HEIGHT
-        ));
+        final int count = ((GridSlotReferenceAccessor) this.getMenu()).wirelessUpgrades$getUpgradeSlotCount();
+        final List<Rect2i> areas = new ArrayList<>();
+        for (int column = 0; column < WirelessGridUpgradeLayout.columns(count); ++column) {
+            areas.add(new Rect2i(
+                this.leftPos + WirelessGridUpgradeLayout.FIRST_SLOT_X - WirelessGridUpgradeLayout.SLOT_INSET_X + column * WirelessGridUpgradeLayout.COLUMN_WIDTH,
+                this.topPos,
+                WirelessGridUpgradeLayout.COLUMN_WIDTH,
+                WirelessGridUpgradeLayout.height(count, column)
+            ));
+        }
+        return areas;
     }
 }

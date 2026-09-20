@@ -1,7 +1,7 @@
 package com.ultramega.rsinsertexportupgrade.neoforge;
 
 import com.ultramega.rsinsertexportupgrade.common.Config;
-import com.ultramega.rsinsertexportupgrade.common.DefaultEnergyUsage;
+import com.ultramega.rsinsertexportupgrade.common.DefaultValues;
 
 import net.neoforged.neoforge.common.ModConfigSpec;
 
@@ -35,21 +35,52 @@ public class ConfigImpl implements Config {
         private final ModConfigSpec.LongValue insertUpgradeEnergyUsage;
         private final ModConfigSpec.LongValue exportUpgradeEnergyUsage;
         private final ModConfigSpec.LongValue blockPickerUpgradeEnergyUsage;
+        private final ModConfigSpec.LongValue magnetUpgradeEnergyUsage;
+        private final ModConfigSpec.DoubleValue magnetUpgradeRange;
+        private final ModConfigSpec.LongValue energyCapacityUpgradeCapacity;
 
         UpgradeEntryImpl(final String name) {
             ConfigImpl.this.builder.translation(translationKey(name)).push(name);
 
             this.insertUpgradeEnergyUsage = ConfigImpl.this.builder
                 .translation(translationKey(name + ".insertUpgradeEnergyUsage"))
-                .defineInRange("insertUpgradeEnergyUsage", DefaultEnergyUsage.INSERT_UPGRADE, 0, Long.MAX_VALUE);
+                .defineInRange("insertUpgradeEnergyUsage", DefaultValues.INSERT_UPGRADE_ENERGY_USAGE, 0, Long.MAX_VALUE);
+
             this.exportUpgradeEnergyUsage = ConfigImpl.this.builder
                 .translation(translationKey(name + ".exportUpgradeEnergyUsage"))
-                .defineInRange("exportUpgradeEnergyUsage", DefaultEnergyUsage.EXPORT_UPGRADE, 0, Long.MAX_VALUE);
+                .defineInRange("exportUpgradeEnergyUsage", DefaultValues.EXPORT_UPGRADE_ENERGY_USAGE, 0, Long.MAX_VALUE);
+
             this.blockPickerUpgradeEnergyUsage = ConfigImpl.this.builder
                 .translation(translationKey(name + ".blockPickerUpgradeEnergyUsage"))
-                .defineInRange("blockPickerUpgradeEnergyUsage", DefaultEnergyUsage.BLOCK_PICKER_UPGRADE, 0, Long.MAX_VALUE);
+                .defineInRange("blockPickerUpgradeEnergyUsage", DefaultValues.BLOCK_PICKER_UPGRADE_ENERGY_USAGE, 0, Long.MAX_VALUE);
+
+            this.magnetUpgradeEnergyUsage = ConfigImpl.this.builder
+                .translation(translationKey(name + ".magnetUpgradeEnergyUsage"))
+                .defineInRange("magnetUpgradeEnergyUsage", DefaultValues.MAGNET_UPGRADE_ENERGY_USAGE, 0, Long.MAX_VALUE);
+            this.magnetUpgradeRange = ConfigImpl.this.builder
+                .translation(translationKey(name + ".magnetUpgradeRange"))
+                .defineInRange("magnetUpgradeRange", DefaultValues.MAGNET_UPGRADE_RANGE, 1.0, 32.0);
+
+            this.energyCapacityUpgradeCapacity = ConfigImpl.this.builder
+                .translation(translationKey(name + ".energyCapacityUpgradeCapacity"))
+                .defineInRange("energyCapacityUpgradeCapacity", DefaultValues.ENERGY_CAPACITY_UPGRADE_CAPACITY, 0, Long.MAX_VALUE);
 
             ConfigImpl.this.builder.pop();
+        }
+
+        @Override
+        public long getEnergyCapacityUpgradeCapacity() {
+            return this.energyCapacityUpgradeCapacity.get();
+        }
+
+        @Override
+        public long getMagnetUpgradeEnergyUsage() {
+            return this.magnetUpgradeEnergyUsage.get();
+        }
+
+        @Override
+        public double getMagnetUpgradeRange() {
+            return this.magnetUpgradeRange.get();
         }
 
         @Override

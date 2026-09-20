@@ -43,6 +43,7 @@ publishMods {
         modLoaders.add("neoforge")
         displayName = file.map { it.asFile.name }
         requires("refined-storage")
+        optional("curios")
     }
 
     modrinth("modrinthFabric") {
@@ -57,6 +58,7 @@ publishMods {
         file(project(":neoforge"))
         modLoaders.add("neoforge")
         requires("refined-storage")
+        optional("curios")
     }
 }
 

@@ -3,12 +3,17 @@ package com.ultramega.rsinsertexportupgrade.fabric;
 import com.ultramega.rsinsertexportupgrade.common.AbstractModInitializer;
 import com.ultramega.rsinsertexportupgrade.common.Platform;
 import com.ultramega.rsinsertexportupgrade.common.network.BlockPickerPayload;
+import com.ultramega.rsinsertexportupgrade.common.network.CurioSlotUpdatePayload;
 import com.ultramega.rsinsertexportupgrade.common.network.OpenUpgradePayload;
 import com.ultramega.rsinsertexportupgrade.common.network.ReturnToGridPayload;
+import com.ultramega.rsinsertexportupgrade.common.network.SyncSelectedCurioSlotsPayload;
 import com.ultramega.rsinsertexportupgrade.common.network.SyncSelectedInventorySlotsPayload;
+import com.ultramega.rsinsertexportupgrade.common.network.SyncUpgradeSlotCountPayload;
 import com.ultramega.rsinsertexportupgrade.common.network.UpdateBlockPickerAmountPayload;
 import com.ultramega.rsinsertexportupgrade.common.network.UpdateSelectedInventorySlotsPayload;
 import com.ultramega.rsinsertexportupgrade.common.registry.CreativeModeTabItems;
+import com.ultramega.rsinsertexportupgrade.common.transfer.ItemContentsStorage;
+import com.ultramega.rsinsertexportupgrade.fabric.transfer.FabricContentsAdapter;
 
 import com.refinedmods.refinedstorage.common.api.RefinedStorageApi;
 import com.refinedmods.refinedstorage.common.content.DirectRegistryCallback;
@@ -33,6 +38,7 @@ public class ModInitializerImpl extends AbstractModInitializer implements Refine
     @Override
     public void onApiAvailable(final RefinedStorageApi refinedStorageApi) {
         Platform.setConfigProvider(ConfigImpl::get);
+        Platform.setServerConfigProvider(ServerConfigImpl::get);
         this.registerItems(new DirectRegistryCallback<>(BuiltInRegistries.ITEM));
         this.registerUpgradeMappings();
         this.registerCreativeModeTabListener(refinedStorageApi);
@@ -43,6 +49,8 @@ public class ModInitializerImpl extends AbstractModInitializer implements Refine
             }
         });
         this.registerNetworking();
+
+        ItemContentsStorage.setAdapter(new FabricContentsAdapter());
     }
 
     private void registerCreativeModeTabListener(final RefinedStorageApi refinedStorageApi) {
@@ -61,8 +69,11 @@ public class ModInitializerImpl extends AbstractModInitializer implements Refine
         PayloadTypeRegistry.playC2S().register(UpdateSelectedInventorySlotsPayload.TYPE, UpdateSelectedInventorySlotsPayload.STREAM_CODEC);
         PayloadTypeRegistry.playC2S().register(BlockPickerPayload.TYPE, BlockPickerPayload.STREAM_CODEC);
         PayloadTypeRegistry.playC2S().register(UpdateBlockPickerAmountPayload.TYPE, UpdateBlockPickerAmountPayload.STREAM_CODEC);
+        PayloadTypeRegistry.playC2S().register(CurioSlotUpdatePayload.TYPE, CurioSlotUpdatePayload.STREAM_CODEC);
 
         PayloadTypeRegistry.playS2C().register(SyncSelectedInventorySlotsPayload.TYPE, SyncSelectedInventorySlotsPayload.STREAM_CODEC);
+        PayloadTypeRegistry.playS2C().register(SyncSelectedCurioSlotsPayload.TYPE, SyncSelectedCurioSlotsPayload.STREAM_CODEC);
+        PayloadTypeRegistry.playS2C().register(SyncUpgradeSlotCountPayload.TYPE, SyncUpgradeSlotCountPayload.STREAM_CODEC);
 
         ServerPlayNetworking.registerGlobalReceiver(
             OpenUpgradePayload.TYPE,
@@ -84,10 +95,15 @@ public class ModInitializerImpl extends AbstractModInitializer implements Refine
             UpdateBlockPickerAmountPayload.TYPE,
             (payload, context) -> payload.handle(context.player())
         );
+        ServerPlayNetworking.registerGlobalReceiver(
+            CurioSlotUpdatePayload.TYPE,
+            (payload, context) -> payload.handle(context.player())
+        );
     }
 
     @Override
     public void onInitialize() {
         AutoConfig.register(ConfigImpl.class, Toml4jConfigSerializer::new);
+        AutoConfig.register(ServerConfigImpl.class, Toml4jConfigSerializer::new);
     }
 }

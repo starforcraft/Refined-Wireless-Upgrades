@@ -9,7 +9,8 @@ import net.minecraft.network.codec.StreamCodec;
 
 public enum UpgradeType {
     INSERT(0, "insert"),
-    EXPORT(1, "export");
+    EXPORT(1, "export"),
+    MAGNET(2, "magnet");
 
     public static final StreamCodec<ByteBuf, UpgradeType> STREAM_CODEC = ByteBufCodecs.idMapper(
         id -> UpgradeType.valueOf(id).orElseThrow(),

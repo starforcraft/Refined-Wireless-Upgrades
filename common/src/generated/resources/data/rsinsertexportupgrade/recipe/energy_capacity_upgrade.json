@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "R": {
+      "item": "minecraft:redstone_block"
+    },
+    "U": {
+      "item": "refinedstorage:stack_upgrade"
+    }
+  },
+  "pattern": [
+    " R ",
+    "RUR",
+    " R "
+  ],
+  "result": {
+    "count": 1,
+    "id": "rsinsertexportupgrade:energy_capacity_upgrade"
+  }
+}

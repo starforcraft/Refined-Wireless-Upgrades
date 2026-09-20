@@ -1,9 +1,12 @@
 package com.ultramega.rsinsertexportupgrade.common.mixin;
 
+import com.ultramega.rsinsertexportupgrade.common.network.SyncUpgradeSlotCountPayload;
 import com.ultramega.rsinsertexportupgrade.common.util.GridSlotReferenceAccessor;
 import com.ultramega.rsinsertexportupgrade.common.util.IGridUpgrade;
+import com.ultramega.rsinsertexportupgrade.common.util.WirelessGridUpgradeLayout;
 import com.ultramega.rsinsertexportupgrade.common.util.WirelessGridUpgradeStorage;
 
+import com.refinedmods.refinedstorage.common.Platform;
 import com.refinedmods.refinedstorage.common.api.support.slotreference.SlotReference;
 import com.refinedmods.refinedstorage.common.grid.AbstractGridContainerMenu;
 import com.refinedmods.refinedstorage.common.support.containermenu.AbstractResourceContainerMenu;
@@ -12,6 +15,7 @@ import com.refinedmods.refinedstorage.common.upgrade.UpgradeSlot;
 
 import javax.annotation.Nullable;
 
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.MenuType;
@@ -25,12 +29,13 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(AbstractGridContainerMenu.class)
-public abstract class AbstractGridContainerMenuMixin extends AbstractResourceContainerMenu
-    implements GridSlotReferenceAccessor {
-
+public abstract class AbstractGridContainerMenuMixin extends AbstractResourceContainerMenu implements GridSlotReferenceAccessor {
     @Shadow
     @Final
     protected Inventory playerInventory;
+
+    @Unique
+    private int wirelessUpgrades$upgradeSlotCount;
 
     protected AbstractGridContainerMenuMixin(@Nullable final MenuType<?> type, final int syncId, final Player player) {
         super(type, syncId, player);
@@ -52,24 +57,35 @@ public abstract class AbstractGridContainerMenuMixin extends AbstractResourceCon
             return;
         }
 
-        final UpgradeContainer upgradeContainer = this.insertExport$createContainer(wirelessGrid, player);
-        for (int i = 0; i < 2; ++i) {
-            this.addSlot(new UpgradeSlot(upgradeContainer, i, 204, 6 + (18 * i)));
+        if (this.wirelessUpgrades$upgradeSlotCount == 0) {
+            this.wirelessUpgrades$upgradeSlotCount = WirelessGridUpgradeStorage.getSlotCount(player);
+        }
+        if (player instanceof ServerPlayer serverPlayer) {
+            Platform.INSTANCE.sendPacketToClient(serverPlayer, new SyncUpgradeSlotCountPayload(this.wirelessUpgrades$upgradeSlotCount));
+        }
+        final UpgradeContainer upgradeContainer = this.wirelessUpgrades$createContainer(wirelessGrid, player);
+        for (int i = 0; i < upgradeContainer.getContainerSize(); ++i) {
+            this.addSlot(new UpgradeSlot(upgradeContainer, i, WirelessGridUpgradeLayout.slotX(i), WirelessGridUpgradeLayout.slotY(i)));
         }
 
         this.transferManager.addBiTransfer(player.getInventory(), upgradeContainer);
     }
 
     @Unique
-    private UpgradeContainer insertExport$createContainer(final ItemStack wirelessGrid, final Player player) {
-        final UpgradeContainer container = WirelessGridUpgradeStorage.createContainer(wirelessGrid, player);
+    private UpgradeContainer wirelessUpgrades$createContainer(final ItemStack wirelessGrid, final Player player) {
+        final UpgradeContainer container = WirelessGridUpgradeStorage.createContainer(wirelessGrid, player, this.wirelessUpgrades$upgradeSlotCount);
         container.addListener(changed -> WirelessGridUpgradeStorage.save(container, wirelessGrid, player));
         return container;
     }
 
     @Override
+    public int wirelessUpgrades$getUpgradeSlotCount() {
+        return this.wirelessUpgrades$upgradeSlotCount;
+    }
+
+    @Override
     @Nullable
-    public SlotReference insertexport$getGridSlotReference() {
+    public SlotReference wirelessUpgrades$getGridSlotReference() {
         return this.disabledSlot;
     }
 }

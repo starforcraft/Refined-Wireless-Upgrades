@@ -3,12 +3,18 @@ package com.ultramega.rsinsertexportupgrade.neoforge;
 import com.ultramega.rsinsertexportupgrade.common.AbstractModInitializer;
 import com.ultramega.rsinsertexportupgrade.common.Platform;
 import com.ultramega.rsinsertexportupgrade.common.network.BlockPickerPayload;
+import com.ultramega.rsinsertexportupgrade.common.network.CurioSlotUpdatePayload;
 import com.ultramega.rsinsertexportupgrade.common.network.OpenUpgradePayload;
 import com.ultramega.rsinsertexportupgrade.common.network.ReturnToGridPayload;
+import com.ultramega.rsinsertexportupgrade.common.network.SyncSelectedCurioSlotsPayload;
 import com.ultramega.rsinsertexportupgrade.common.network.SyncSelectedInventorySlotsPayload;
+import com.ultramega.rsinsertexportupgrade.common.network.SyncUpgradeSlotCountPayload;
 import com.ultramega.rsinsertexportupgrade.common.network.UpdateBlockPickerAmountPayload;
 import com.ultramega.rsinsertexportupgrade.common.network.UpdateSelectedInventorySlotsPayload;
 import com.ultramega.rsinsertexportupgrade.common.registry.CreativeModeTabItems;
+import com.ultramega.rsinsertexportupgrade.common.transfer.ItemContentsStorage;
+import com.ultramega.rsinsertexportupgrade.neoforge.compat.curios.CuriosCompat;
+import com.ultramega.rsinsertexportupgrade.neoforge.transfer.NeoForgeContentsAdapter;
 
 import com.refinedmods.refinedstorage.common.api.RefinedStorageApi;
 import com.refinedmods.refinedstorage.common.content.MenuTypeFactory;
@@ -28,6 +34,7 @@ import net.minecraft.world.item.Item;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
@@ -48,15 +55,23 @@ public class ModInitializer extends AbstractModInitializer {
         final ConfigImpl config = new ConfigImpl();
         modContainer.registerConfig(ModConfig.Type.COMMON, config.getSpec());
         Platform.setConfigProvider(() -> config);
+        final ServerConfigImpl serverConfig = new ServerConfigImpl();
+        modContainer.registerConfig(ModConfig.Type.SERVER, serverConfig.getSpec());
+        Platform.setServerConfigProvider(() -> serverConfig);
+
         if (FMLEnvironment.dist == Dist.CLIENT) {
             eventBus.addListener(ClientModInitializer::onRegisterMenuScreens);
         }
-
         eventBus.addListener(this::onCommonSetup);
         eventBus.addListener(this::registerPayloads);
         this.registerItems(eventBus);
         this.registerMenus(eventBus);
         eventBus.addListener(this::registerCreativeModeTabListener);
+
+        ItemContentsStorage.setAdapter(new NeoForgeContentsAdapter());
+        if (ModList.get().isLoaded("curios")) {
+            CuriosCompat.register();
+        }
     }
 
     private void registerItems(final IEventBus eventBus) {
@@ -103,16 +118,31 @@ public class ModInitializer extends AbstractModInitializer {
             UpdateBlockPickerAmountPayload.STREAM_CODEC,
             (payload, context) -> payload.handle(context.player())
         );
+        registrar.playToServer(
+            CurioSlotUpdatePayload.TYPE,
+            CurioSlotUpdatePayload.STREAM_CODEC,
+            (payload, context) -> payload.handle(context.player())
+        );
 
         registrar.playToClient(
             SyncSelectedInventorySlotsPayload.TYPE,
             SyncSelectedInventorySlotsPayload.STREAM_CODEC,
             (payload, context) -> payload.handle(context.player())
         );
+        registrar.playToClient(
+            SyncSelectedCurioSlotsPayload.TYPE,
+            SyncSelectedCurioSlotsPayload.STREAM_CODEC,
+            (payload, context) -> payload.handle(context.player())
+        );
+        registrar.playToClient(
+            SyncUpgradeSlotCountPayload.TYPE,
+            SyncUpgradeSlotCountPayload.STREAM_CODEC,
+            (payload, context) -> payload.handle()
+        );
     }
 
     private void onCommonSetup(final FMLCommonSetupEvent e) {
-        this.registerUpgradeMappings();
+        e.enqueueWork(this::registerUpgradeMappings);
     }
 
     private void registerCreativeModeTabListener(final BuildCreativeModeTabContentsEvent e) {

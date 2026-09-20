@@ -53,5 +53,24 @@ public final class RecipeProviderImpl extends RecipeProvider {
             .define('R', com.refinedmods.refinedstorage.common.content.Items.INSTANCE.getQuartzEnrichedCopper())
             .unlockedBy(getHasName(speedUpgrade), has(speedUpgrade))
             .save(recipeOutput, ContentIds.BLOCK_PICKER_UPGRADE);
+
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, Items.INSTANCE.getMagnetUpgrade())
+            .pattern("RSR")
+            .pattern("STS")
+            .pattern("RSR")
+            .define('R', net.minecraft.world.item.Items.IRON_INGOT)
+            .define('S', speedUpgrade)
+            .define('T', net.minecraft.world.item.Items.ENDER_PEARL)
+            .unlockedBy(getHasName(speedUpgrade), has(speedUpgrade))
+            .save(recipeOutput, ContentIds.MAGNET_UPGRADE);
+
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, Items.INSTANCE.getEnergyCapacityUpgrade())
+            .pattern(" R ")
+            .pattern("RUR")
+            .pattern(" R ")
+            .define('R', net.minecraft.world.item.Items.REDSTONE_BLOCK)
+            .define('U', stackUpgrade)
+            .unlockedBy(getHasName(stackUpgrade), has(stackUpgrade))
+            .save(recipeOutput, ContentIds.ENERGY_CAPACITY_UPGRADE);
     }
 }

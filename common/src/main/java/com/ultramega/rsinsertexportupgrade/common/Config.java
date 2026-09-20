@@ -9,5 +9,11 @@ public interface Config {
         long getExportUpgradeEnergyUsage();
 
         long getBlockPickerUpgradeEnergyUsage();
+
+        long getMagnetUpgradeEnergyUsage();
+
+        double getMagnetUpgradeRange();
+
+        long getEnergyCapacityUpgradeCapacity();
     }
 }

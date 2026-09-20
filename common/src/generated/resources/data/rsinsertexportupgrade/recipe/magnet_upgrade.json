@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "R": {
+      "item": "minecraft:iron_ingot"
+    },
+    "S": {
+      "item": "refinedstorage:speed_upgrade"
+    },
+    "T": {
+      "item": "minecraft:ender_pearl"
+    }
+  },
+  "pattern": [
+    "RSR",
+    "STS",
+    "RSR"
+  ],
+  "result": {
+    "count": 1,
+    "id": "rsinsertexportupgrade:magnet_upgrade"
+  }
+}

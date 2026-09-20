@@ -16,6 +16,10 @@ public final class Items {
     private Supplier<AbstractUpgradeItem> exportUpgrade;
     @Nullable
     private Supplier<AbstractUpgradeItem> blockPickerUpgrade;
+    @Nullable
+    private Supplier<AbstractUpgradeItem> magnetUpgrade;
+    @Nullable
+    private Supplier<AbstractUpgradeItem> energyCapacityUpgrade;
 
     private Items() {
     }
@@ -42,5 +46,21 @@ public final class Items {
 
     public void setBlockPickerUpgrade(final Supplier<AbstractUpgradeItem> supplier) {
         this.blockPickerUpgrade = supplier;
+    }
+
+    public AbstractUpgradeItem getMagnetUpgrade() {
+        return requireNonNull(this.magnetUpgrade).get();
+    }
+
+    public void setMagnetUpgrade(final Supplier<AbstractUpgradeItem> supplier) {
+        this.magnetUpgrade = supplier;
+    }
+
+    public AbstractUpgradeItem getEnergyCapacityUpgrade() {
+        return requireNonNull(this.energyCapacityUpgrade).get();
+    }
+
+    public void setEnergyCapacityUpgrade(final Supplier<AbstractUpgradeItem> supplier) {
+        this.energyCapacityUpgrade = supplier;
     }
 }

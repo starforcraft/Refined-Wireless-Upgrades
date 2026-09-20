@@ -1,9 +1,12 @@
 package com.ultramega.rsinsertexportupgrade.common.transfer;
 
+import com.ultramega.rsinsertexportupgrade.common.api.upgrade.WirelessGridUpgradeContext;
+import com.ultramega.rsinsertexportupgrade.common.api.upgrade.WirelessGridUpgradeRegistry;
+import com.ultramega.rsinsertexportupgrade.common.api.upgrade.WirelessGridUpgradeTicker;
+import com.ultramega.rsinsertexportupgrade.common.compat.curios.CuriosBridge;
 import com.ultramega.rsinsertexportupgrade.common.item.UpgradeItem;
 import com.ultramega.rsinsertexportupgrade.common.menu.UpgradeConfiguration;
 import com.ultramega.rsinsertexportupgrade.common.menu.UpgradeConfiguration.RuntimeConfiguration;
-import com.ultramega.rsinsertexportupgrade.common.registry.Items;
 import com.ultramega.rsinsertexportupgrade.common.util.WirelessGridUpgradeStorage;
 
 import com.refinedmods.refinedstorage.api.autocrafting.calculation.CancellationToken;
@@ -15,6 +18,7 @@ import com.refinedmods.refinedstorage.api.resource.ResourceAmount;
 import com.refinedmods.refinedstorage.api.resource.ResourceKey;
 import com.refinedmods.refinedstorage.api.resource.filter.Filter;
 import com.refinedmods.refinedstorage.api.storage.Actor;
+import com.refinedmods.refinedstorage.api.storage.Storage;
 import com.refinedmods.refinedstorage.api.storage.TransferHelper;
 import com.refinedmods.refinedstorage.common.api.RefinedStorageApi;
 import com.refinedmods.refinedstorage.common.api.security.SecurityHelper;
@@ -22,13 +26,13 @@ import com.refinedmods.refinedstorage.common.api.storage.PlayerActor;
 import com.refinedmods.refinedstorage.common.api.storage.root.FuzzyRootStorage;
 import com.refinedmods.refinedstorage.common.api.support.network.item.NetworkItemContext;
 import com.refinedmods.refinedstorage.common.api.support.resource.FuzzyModeNormalizer;
-import com.refinedmods.refinedstorage.common.api.support.resource.ResourceFactory;
+import com.refinedmods.refinedstorage.common.api.support.resource.ResourceContainer;
 import com.refinedmods.refinedstorage.common.api.support.slotreference.SlotReference;
 import com.refinedmods.refinedstorage.common.security.BuiltinPermission;
+import com.refinedmods.refinedstorage.common.support.resource.ItemResource;
 import com.refinedmods.refinedstorage.common.upgrade.UpgradeContainer;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -38,7 +42,6 @@ import java.util.function.UnaryOperator;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
@@ -57,7 +60,9 @@ public final class UpgradeProcessor {
             }
             final CustomData data = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY);
             CachedGrid cached = this.previousGrids.get(stack);
-            if (cached == null || cached.data() != data || cached.registries() != player.registryAccess()) {
+            if (cached == null || cached.data() != data || cached.registries() != player.registryAccess()
+                || cached.upgrades().getContainerSize() != WirelessGridUpgradeStorage.getSlotCount(player)
+                || cached.registrationRevision() != WirelessGridUpgradeRegistry.getRevision()) {
                 cached = CachedGrid.create(stack, data, player);
             }
             this.currentGrids.put(stack, cached);
@@ -88,22 +93,12 @@ public final class UpgradeProcessor {
         }
 
         final Network network = resolvedNetwork.get();
-        final StorageNetworkComponent storage = network.getComponent(StorageNetworkComponent.class);
-        final Actor actor = new PlayerActor(player);
         boolean inventoryChanged = false;
-
         for (int slot = 0; slot < installedUpgrades.getContainerSize() && context.isActive(); ++slot) {
-            final ItemStack upgradeStack = installedUpgrades.getItem(slot);
-            if (!(upgradeStack.getItem() instanceof UpgradeItem upgradeItem)) {
-                continue;
-            }
-
-            if (upgradeStack.is(Items.INSTANCE.getInsertUpgrade()) && SecurityHelper.isAllowed(player, BuiltinPermission.INSERT, network)) {
-                inventoryChanged |= processInsertUpgrade(cached.configurations()[slot], cached.insertFilters()[slot],
-                    upgradeItem, player, wirelessGrid, wirelessGridSlot, storage, actor, context);
-            } else if (upgradeStack.is(Items.INSTANCE.getExportUpgrade()) && SecurityHelper.isAllowed(player, BuiltinPermission.EXTRACT, network)) {
-                inventoryChanged |= processExportUpgrade(cached.configurations()[slot], cached.exportResources()[slot],
-                    upgradeItem, player, network, storage, actor, context);
+            final WirelessGridUpgradeTicker ticker = cached.tickers()[slot];
+            if (ticker != WirelessGridUpgradeTicker.NONE) {
+                inventoryChanged |= ticker.tick(new WirelessGridUpgradeContext(player, wirelessGrid,
+                    wirelessGridSlot, slot, installedUpgrades.getItem(slot).copy(), network, context));
             }
         }
 
@@ -126,7 +121,6 @@ public final class UpgradeProcessor {
         }
 
         final Inventory inventory = player.getInventory();
-        final ResourceFactory itemResourceFactory = RefinedStorageApi.INSTANCE.getItemResourceFactory();
         final int[] selectedSlots = configuration.selectedInventorySlots();
         boolean inventoryChanged = false;
 
@@ -140,40 +134,67 @@ public final class UpgradeProcessor {
                 continue;
             }
 
-            final Optional<ResourceAmount> resourceAmount = itemResourceFactory.create(stack);
-            if (resourceAmount.isEmpty() || !filter.isAllowed(resourceAmount.get().resource())) {
-                continue;
-            }
             if (!context.isActive()) {
                 break;
             }
-
             final PlayerInventorySlotStorage source = new PlayerInventorySlotStorage(player, slot);
-            final long transferred = TransferHelper.transfer(resourceAmount.get().resource(), resourceAmount.get().amount(), actor, source, storage, source);
-            if (transferred > 0) {
-                context.drainEnergy(upgradeItem.getEnergyUsage());
-                inventoryChanged = true;
+            inventoryChanged |= insertFromSlot(source, source.contentsAccess(), filter, storage, actor, context, upgradeItem.getEnergyUsage());
+        }
+        for (final String key : configuration.selectedCurioSlots().keySet()) {
+            if (!context.isActive()) {
+                break;
+            }
+            for (final CuriosBridge.Slot curio : CuriosBridge.getSlots(player)) {
+                if (curio.key().equals(key)) {
+                    if (!curio.stack().isEmpty() && curio.stack() != wirelessGrid) {
+                        inventoryChanged |= insertFromSlot(curio.storage(), curio.contentsAccess(), filter, storage, actor, context, upgradeItem.getEnergyUsage());
+                    }
+                    break;
+                }
             }
         }
         return inventoryChanged;
     }
 
-    private static Filter createInsertFilter(final RuntimeConfiguration configuration, final ResourceFactory itemResourceFactory) {
-        final SimpleContainer filterContainer = configuration.filter();
+    private static boolean insertFromSlot(final Storage itemStorage, final ItemStackAccess access,
+                                          final Filter filter, final StorageNetworkComponent network,
+                                          final Actor actor, final NetworkItemContext context, final long energyUsage) {
+        final ItemContentsStorage contents = new ItemContentsStorage(access);
+        boolean changed = false;
+        for (final ResourceAmount entry : contents.getAll()) {
+            if (!context.isActive()) {
+                return changed;
+            }
+            if (filter.isAllowed(entry.resource())) {
+                final long limit = Math.min(entry.amount(), ItemContentsStorage.transferSize(entry.resource(), false));
+                if (TransferHelper.transfer(entry.resource(), limit, actor, contents, network, contents) > 0) {
+                    context.drainEnergy(energyUsage);
+                    changed = true;
+                }
+            }
+        }
+        // Re-read after draining: a filled bucket may now be an empty bucket
+        for (final ResourceAmount entry : itemStorage.getAll()) {
+            if (!context.isActive()) {
+                break;
+            }
+            if (filter.isAllowed(entry.resource())
+                && TransferHelper.transfer(entry.resource(), entry.amount(), actor, itemStorage, network, itemStorage) > 0) {
+                context.drainEnergy(energyUsage);
+                changed = true;
+            }
+        }
+        return changed;
+    }
+
+    private static Filter createInsertFilter(final RuntimeConfiguration configuration) {
         final boolean fuzzyMode = configuration.fuzzyMode();
         final UnaryOperator<ResourceKey> normalizer = resource -> fuzzyMode && resource instanceof FuzzyModeNormalizer fuzzyModeNormalizer
             ? fuzzyModeNormalizer.normalize()
             : resource;
-        final Set<ResourceKey> configuredResources = new HashSet<>();
-        for (int slot = 0; slot < filterContainer.getContainerSize(); ++slot) {
-            itemResourceFactory.create(filterContainer.getItem(slot))
-                .map(ResourceAmount::resource)
-                .ifPresent(configuredResources::add);
-        }
-
         final Filter filter = new Filter();
         filter.setNormalizer(normalizer);
-        filter.setFilters(configuredResources);
+        filter.setFilters(configuration.filter().getUniqueResources());
         filter.setMode(configuration.filterMode());
         return filter;
     }
@@ -190,9 +211,7 @@ public final class UpgradeProcessor {
             return false;
         }
 
-        final ResourceFactory itemResourceFactory = RefinedStorageApi.INSTANCE.getItemResourceFactory();
         final int[] selectedSlots = configuration.selectedInventorySlots();
-        final long transferSize = configuration.hasStackUpgrade() ? 64 : 1;
         final boolean shouldTryAutocrafting = configuration.hasAutocraftingUpgrade() && player.level().getGameTime() % AUTOCRAFTING_RETRY_INTERVAL == 0;
         final Map<ResourceKey, Long> autocraftingRequests = shouldTryAutocrafting ? new HashMap<>() : Map.of();
         boolean inventoryChanged = false;
@@ -211,26 +230,31 @@ public final class UpgradeProcessor {
                 break;
             }
 
-            final PlayerInventorySlotStorage destination = new PlayerInventorySlotStorage(player, slot);
-            final ExportResult result = exportStoredResource(
-                configuredResource,
-                configuration.fuzzyMode(),
-                transferSize,
-                storage,
-                destination,
-                actor,
-                itemResourceFactory
-            );
-            if (result.transferred()) {
-                context.drainEnergy(upgradeItem.getEnergyUsage());
-                inventoryChanged = true;
+            final PlayerInventorySlotStorage target = new PlayerInventorySlotStorage(player, slot);
+            final Storage destination = configuredResource instanceof ItemResource ? target : new ItemContentsStorage(target.contentsAccess());
+            inventoryChanged |= exportToSlot(configuredResource, configuration.fuzzyMode(),
+                ItemContentsStorage.transferSize(configuredResource, configuration.hasStackUpgrade()), storage,
+                destination, actor, context,
+                upgradeItem.getEnergyUsage(), shouldTryAutocrafting, autocraftingRequests);
+        }
+
+        for (final Map.Entry<String, Integer> selection : configuration.selectedCurioSlots().entrySet()) {
+            if (!context.isActive()) {
+                break;
+            }
+            final int filterSlot = selection.getValue() - 1;
+            if (filterSlot < 0 || filterSlot >= configuredResources.length || configuredResources[filterSlot] == null) {
                 continue;
             }
-
-            if (!result.resourceWasStored() && shouldTryAutocrafting) {
-                final long acceptableAmount = destination.insert(configuredResource, transferSize, Action.SIMULATE, actor);
-                if (acceptableAmount > 0) {
-                    autocraftingRequests.merge(configuredResource, acceptableAmount, Math::max);
+            for (final CuriosBridge.Slot curio : CuriosBridge.getSlots(player)) {
+                if (curio.key().equals(selection.getKey())) {
+                    final ResourceKey resource = configuredResources[filterSlot];
+                    final Storage destination = resource instanceof ItemResource ? curio.storage() : new ItemContentsStorage(curio.contentsAccess());
+                    inventoryChanged |= exportToSlot(resource, configuration.fuzzyMode(),
+                        ItemContentsStorage.transferSize(resource, configuration.hasStackUpgrade()),
+                        storage, destination, actor, context, upgradeItem.getEnergyUsage(),
+                        shouldTryAutocrafting, autocraftingRequests);
+                    break;
                 }
             }
         }
@@ -239,26 +263,46 @@ public final class UpgradeProcessor {
         return inventoryChanged;
     }
 
-    private static ResourceKey[] createConfiguredResources(final SimpleContainer filterContainer,
-                                                           final ResourceFactory itemResourceFactory) {
-        final ResourceKey[] configuredResources = new ResourceKey[filterContainer.getContainerSize()];
-        for (int slot = 0; slot < filterContainer.getContainerSize(); ++slot) {
-            final Optional<ResourceAmount> configured = itemResourceFactory.create(filterContainer.getItem(slot));
-            if (configured.isPresent()) {
-                configuredResources[slot] = configured.get().resource();
+    private static boolean exportToSlot(final ResourceKey resource,
+                                        final boolean fuzzyMode,
+                                        final long transferSize,
+                                        final StorageNetworkComponent storage,
+                                        final Storage destination,
+                                        final Actor actor,
+                                        final NetworkItemContext context,
+                                        final long energyUsage,
+                                        final boolean shouldTryAutocrafting,
+                                        final Map<ResourceKey, Long> autocraftingRequests) {
+        final ExportResult result = exportStoredResource(resource, fuzzyMode, transferSize, storage, destination,
+            actor);
+        if (result.transferred()) {
+            context.drainEnergy(energyUsage);
+            return true;
+        }
+        if (!result.resourceWasStored() && shouldTryAutocrafting) {
+            final long acceptableAmount = destination.insert(resource, transferSize, Action.SIMULATE, actor);
+            if (acceptableAmount > 0) {
+                autocraftingRequests.merge(resource, acceptableAmount, Math::max);
             }
         }
-        return configuredResources;
+        return false;
+    }
+
+    private static ResourceKey[] createConfiguredResources(final ResourceContainer filter) {
+        final ResourceKey[] resources = new ResourceKey[filter.size()];
+        for (int slot = 0; slot < filter.size(); ++slot) {
+            resources[slot] = filter.getResource(slot);
+        }
+        return resources;
     }
 
     private static ExportResult exportStoredResource(final ResourceKey configuredResource,
                                                      final boolean fuzzyMode,
                                                      final long transferSize,
                                                      final StorageNetworkComponent storage,
-                                                     final PlayerInventorySlotStorage destination,
-                                                     final Actor actor,
-                                                     final ResourceFactory itemResourceFactory) {
-        final ExportResult exactResult = exportCandidate(configuredResource, transferSize, storage, destination, actor, itemResourceFactory);
+                                                     final Storage destination,
+                                                     final Actor actor) {
+        final ExportResult exactResult = exportCandidate(configuredResource, transferSize, storage, destination, actor);
         if (exactResult.transferred() || !fuzzyMode || !(storage instanceof FuzzyRootStorage fuzzyRootStorage)) {
             return exactResult;
         }
@@ -268,7 +312,7 @@ public final class UpgradeProcessor {
             if (candidate.equals(configuredResource)) {
                 continue;
             }
-            final ExportResult fuzzyResult = exportCandidate(candidate, transferSize, storage, destination, actor, itemResourceFactory);
+            final ExportResult fuzzyResult = exportCandidate(candidate, transferSize, storage, destination, actor);
             if (fuzzyResult.transferred()) {
                 return fuzzyResult;
             }
@@ -280,10 +324,9 @@ public final class UpgradeProcessor {
     private static ExportResult exportCandidate(final ResourceKey resource,
                                                 final long transferSize,
                                                 final StorageNetworkComponent storage,
-                                                final PlayerInventorySlotStorage destination,
-                                                final Actor actor,
-                                                final ResourceFactory itemResourceFactory) {
-        if (!itemResourceFactory.isValid(resource) || storage.get(resource) <= 0) {
+                                                final Storage destination,
+                                                final Actor actor) {
+        if (storage.get(resource) <= 0) {
             return new ExportResult(false, false);
         }
         final long transferred = TransferHelper.transfer(resource, transferSize, actor, storage, destination, storage);
@@ -316,32 +359,48 @@ public final class UpgradeProcessor {
         }
     }
 
+    public static WirelessGridUpgradeTicker createInsertTicker(final ItemStack stack,
+                                                               final HolderLookup.Provider registries) {
+        final RuntimeConfiguration configuration = UpgradeConfiguration.getRuntimeConfiguration(stack, registries);
+        if (!configuration.hasSelectedSlots()) {
+            return WirelessGridUpgradeTicker.NONE;
+        }
+        final Filter filter = createInsertFilter(configuration);
+        final UpgradeItem item = (UpgradeItem) stack.getItem();
+        return context -> SecurityHelper.isAllowed(context.player(), BuiltinPermission.INSERT, context.network())
+            && processInsertUpgrade(configuration, filter, item, context.player(), context.wirelessGrid(), context.wirelessGridSlot(),
+            context.network().getComponent(StorageNetworkComponent.class), new PlayerActor(context.player()), context.networkItemContext());
+    }
+
+    public static WirelessGridUpgradeTicker createExportTicker(final ItemStack stack,
+                                                               final HolderLookup.Provider registries) {
+        final RuntimeConfiguration configuration = UpgradeConfiguration.getRuntimeConfiguration(stack, registries);
+        if (!configuration.hasSelectedSlots()) {
+            return WirelessGridUpgradeTicker.NONE;
+        }
+        final ResourceKey[] resources = createConfiguredResources(configuration.filter());
+        final UpgradeItem item = (UpgradeItem) stack.getItem();
+        return context -> SecurityHelper.isAllowed(context.player(), BuiltinPermission.EXTRACT, context.network())
+            && processExportUpgrade(configuration, resources, item, context.player(), context.network(),
+                context.network().getComponent(StorageNetworkComponent.class), new PlayerActor(context.player()), context.networkItemContext());
+    }
+
     private record CachedGrid(CustomData data,
                               HolderLookup.Provider registries,
                               UpgradeContainer upgrades,
-                              RuntimeConfiguration[] configurations,
-                              Filter[] insertFilters,
-                              ResourceKey[][] exportResources,
+                              WirelessGridUpgradeTicker[] tickers,
+                              long registrationRevision,
                               boolean supported) {
         private static CachedGrid create(final ItemStack stack, final CustomData data, final ServerPlayer player) {
+            final long registrationRevision = WirelessGridUpgradeRegistry.getRevision();
             final UpgradeContainer upgrades = WirelessGridUpgradeStorage.createContainer(stack, player);
-            final RuntimeConfiguration[] configurations = new RuntimeConfiguration[upgrades.getContainerSize()];
-            final Filter[] insertFilters = new Filter[upgrades.getContainerSize()];
-            final ResourceKey[][] exportResources = new ResourceKey[upgrades.getContainerSize()][];
+            final WirelessGridUpgradeTicker[] tickers = new WirelessGridUpgradeTicker[upgrades.getContainerSize()];
             boolean supported = false;
             for (int slot = 0; slot < upgrades.getContainerSize(); ++slot) {
-                final ItemStack upgrade = upgrades.getItem(slot);
-                if (upgrade.is(Items.INSTANCE.getInsertUpgrade()) || upgrade.is(Items.INSTANCE.getExportUpgrade())) {
-                    configurations[slot] = UpgradeConfiguration.getRuntimeConfiguration(upgrade, player.registryAccess());
-                    supported |= configurations[slot].hasSelectedSlots();
-                    if (upgrade.is(Items.INSTANCE.getInsertUpgrade())) {
-                        insertFilters[slot] = createInsertFilter(configurations[slot], RefinedStorageApi.INSTANCE.getItemResourceFactory());
-                    } else {
-                        exportResources[slot] = createConfiguredResources(configurations[slot].filter(), RefinedStorageApi.INSTANCE.getItemResourceFactory());
-                    }
-                }
+                tickers[slot] = WirelessGridUpgradeRegistry.createTicker(upgrades.getItem(slot), player.registryAccess());
+                supported |= tickers[slot] != WirelessGridUpgradeTicker.NONE;
             }
-            return new CachedGrid(data, player.registryAccess(), upgrades, configurations, insertFilters, exportResources, supported);
+            return new CachedGrid(data, player.registryAccess(), upgrades, tickers, registrationRevision, supported);
         }
     }
 

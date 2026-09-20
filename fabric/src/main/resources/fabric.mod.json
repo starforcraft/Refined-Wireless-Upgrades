@@ -2,14 +2,14 @@
   "schemaVersion": 1,
   "id": "rsinsertexportupgrade",
   "version": "${version}",
-  "name": "RS Insert Export Upgrade",
-  "description": "Adds an Insert and Export Upgrade which can be installed into any Wireless Grid.",
+  "name": "Refined Wireless Upgrades",
+  "description": "Adds various upgrade cards which can be installed into any Wireless Grid.",
   "authors": [
     "Ultramega"
   ],
   "contact": {
-    "sources": "https://github.com/starforcraft/RS-Insert-Export-Upgrade",
-    "issues": "https://github.com/starforcraft/RS-Insert-Export-Upgrade/issues"
+    "sources": "https://github.com/starforcraft/Refined-Wireless-Upgrades",
+    "issues": "https://github.com/starforcraft/Refined-Wireless-Upgrades/issues"
   },
   "icon": "logo.png",
   "license": "MIT",

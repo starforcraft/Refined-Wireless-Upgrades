@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_stack_upgrade": {
+      "conditions": {
+        "items": [
+          {
+            "items": "refinedstorage:stack_upgrade"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "rsinsertexportupgrade:energy_capacity_upgrade"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_stack_upgrade"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "rsinsertexportupgrade:energy_capacity_upgrade"
+    ]
+  }
+}

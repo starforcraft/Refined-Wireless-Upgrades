@@ -7,9 +7,11 @@
     "ServerPlayerMixin",
     "AbstractGridContainerMenuMixin",
     "RefinedStorageApiAccessor",
+    "RefinedStorageApiEnergyMixin",
     "RefinedStorageApiProxyInvoker",
     "WirelessGridContainerMenuMixin",
-    "WirelessCraftingGridContainerMenuMixin"
+    "WirelessCraftingGridContainerMenuMixin",
+    "ItemEntityMixin"
   ],
   "client": [
     "MinecraftMixin",
