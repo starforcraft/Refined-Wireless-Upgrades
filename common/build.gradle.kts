@@ -32,7 +32,7 @@ neoForge {
 }
 
 base {
-    archivesName.set("rsinsertexportupgrade-common")
+    archivesName.set("refinedwirelessupgrades-common")
 }
 
 val minecraftVersion: String by project

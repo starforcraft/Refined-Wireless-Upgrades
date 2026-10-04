@@ -1,7 +1,0 @@
-@ParametersAreNonnullByDefault
-@FieldsAndMethodsAreNonnullByDefault
-package com.ultramega.rsinsertexportupgrade.common.menu;
-
-import com.refinedmods.refinedstorage.api.core.FieldsAndMethodsAreNonnullByDefault;
-
-import javax.annotation.ParametersAreNonnullByDefault;

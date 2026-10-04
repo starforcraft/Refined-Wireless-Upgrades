@@ -63,5 +63,5 @@ publishMods {
 }
 
 subprojects {
-    group = "com.ultramega.rsinsertexportupgrade"
+    group = "com.ultramega.refinedwirelessupgrades"
 }

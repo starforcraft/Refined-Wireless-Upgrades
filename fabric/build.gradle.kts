@@ -33,7 +33,7 @@ refinedarchitect {
 }
 
 base {
-    archivesName.set("rsinsertexportupgrade-fabric")
+    archivesName.set("refinedwirelessupgrades-fabric")
 }
 
 val minecraftVersion: String by project
@@ -45,6 +45,7 @@ val commonJava by configurations.existing
 val commonResources by configurations.existing
 
 dependencies {
+    api(libs.apiguardian)
     compileOnly(project(":common"))
     commonJava(project(path = ":common", configuration = "commonJava"))
     commonResources(project(path = ":common", configuration = "commonResources"))

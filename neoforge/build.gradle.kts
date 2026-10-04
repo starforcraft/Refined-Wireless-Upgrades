@@ -42,7 +42,7 @@ refinedarchitect {
 }
 
 base {
-    archivesName.set("rsinsertexportupgrade-neoforge")
+    archivesName.set("refinedwirelessupgrades-neoforge")
 }
 
 val minecraftVersion: String by project
@@ -57,6 +57,7 @@ val commonJava by configurations.existing
 val commonResources by configurations.existing
 
 dependencies {
+    api(libs.apiguardian)
     compileOnly("mekanism:Mekanism:${minecraftVersion}-${mekanismVersion}:api")
     compileOnly("dev.technici4n:GrandPower:${grandpowerVersion}")
     compileOnly("top.theillusivec4.curios:curios-neoforge:${curiosVersion}:api")

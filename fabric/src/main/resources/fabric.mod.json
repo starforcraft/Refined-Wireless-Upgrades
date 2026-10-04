@@ -16,16 +16,16 @@
   "environment": "*",
   "entrypoints": {
     "main": [
-      "com.ultramega.rsinsertexportupgrade.fabric.ModInitializerImpl"
+      "com.ultramega.refinedwirelessupgrades.fabric.ModInitializerImpl"
     ],
     "client": [
-      "com.ultramega.rsinsertexportupgrade.fabric.ClientModInitializerImpl"
+      "com.ultramega.refinedwirelessupgrades.fabric.ClientModInitializerImpl"
     ],
     "refinedstorage_plugin": [
-      "com.ultramega.rsinsertexportupgrade.fabric.ModInitializerImpl"
+      "com.ultramega.refinedwirelessupgrades.fabric.ModInitializerImpl"
     ],
     "jei_mod_plugin": [
-      "com.ultramega.rsinsertexportupgrade.common.compat.jei.JeiModPlugin"
+      "com.ultramega.refinedwirelessupgrades.common.compat.jei.JeiModPlugin"
     ]
   },
   "custom": {

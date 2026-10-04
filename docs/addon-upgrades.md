@@ -11,8 +11,8 @@ On NeoForge, enqueue the call from common setup; on Fabric, call it during commo
 initialization after registering items. Replace `MY_UPGRADE.get()` below with your registered upgrade item.
 
 ```java
-import com.ultramega.rsinsertexportupgrade.common.api.upgrade.WirelessGridUpgradeRegistry;
-import com.ultramega.rsinsertexportupgrade.common.api.upgrade.WirelessGridUpgradeTicker;
+import com.ultramega.refinedwirelessupgrades.common.api.upgrade.WirelessGridUpgradeRegistry;
+import com.ultramega.refinedwirelessupgrades.common.api.upgrade.WirelessGridUpgradeTicker;
 
 // Passive/event-driven upgrade: allow one copy in grid; implement its effect separately.
 WirelessGridUpgradeRegistry.register(MY_UPGRADE.get());
@@ -23,7 +23,7 @@ WirelessGridUpgradeRegistry.register(MY_UPGRADE.get(), 2, WirelessGridUpgradeTic
 ```
 
 Choose only one registration per item. Duplicate registration throws an exception.
-For registrations by this mod, see [`AbstractModInitializer.registerUpgradeMappings()`](../common/src/main/java/com/ultramega/rsinsertexportupgrade/common/AbstractModInitializer.java):
+For registrations by this mod, see [`AbstractModInitializer.registerUpgradeMappings()`](../common/src/main/java/com/ultramega/refinedwirelessupgrades/common/AbstractModInitializer.java):
 
 For behavior that runs every server player tick while the grid is active and
 connected, register a callback instead:
@@ -52,7 +52,7 @@ convenience overload creates a standard side button from a sprite, title and cli
 action:
 
 ```java
-import com.ultramega.rsinsertexportupgrade.common.api.client.WirelessGridSideButtonRegistry;
+import com.ultramega.refinedwirelessupgrades.common.api.client.WirelessGridSideButtonRegistry;
 
 WirelessGridSideButtonRegistry.register(
     MY_UPGRADE.get(),
@@ -79,7 +79,7 @@ WirelessGridSideButtonRegistry.register(
 `getUpgradeStack()`, `getUpgradeSlot()` and `getGridSlotReference()`. The returned
 upgrade stack is a defensive snapshot.
 
-See [`AbstractClientModInitializer.registerSideButtons()`](../common/src/main/java/com/ultramega/rsinsertexportupgrade/common/AbstractClientModInitializer.java)
+See [`AbstractClientModInitializer.registerSideButtons()`](../common/src/main/java/com/ultramega/refinedwirelessupgrades/common/AbstractClientModInitializer.java)
 for all built-in button registrations.
 
 Only one button is shown per installed upgrade item type.
