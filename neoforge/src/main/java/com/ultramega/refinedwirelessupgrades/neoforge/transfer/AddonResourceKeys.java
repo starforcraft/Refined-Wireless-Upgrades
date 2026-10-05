@@ -6,34 +6,33 @@ import com.refinedmods.refinedstorage.common.api.support.resource.PlatformResour
 
 import java.util.Optional;
 
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.NbtOps;
-import net.minecraft.resources.ResourceLocation;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.JsonOps;
+import net.minecraft.resources.Identifier;
 
 final class AddonResourceKeys {
-    static final ResourceLocation ENERGY = ResourceLocation.fromNamespaceAndPath("refinedtypes", "energy");
-    static final ResourceLocation CHEMICAL = ResourceLocation.fromNamespaceAndPath("refinedstorage_mekanism_integration", "chemical");
+    static final Identifier ENERGY = Identifier.fromNamespaceAndPath("refinedtypes", "energy");
+    static final Identifier CHEMICAL = Identifier.fromNamespaceAndPath("refinedstorage_mekanism_integration", "chemical");
 
     private AddonResourceKeys() {
     }
 
-    static Optional<PlatformResourceKey> decode(final ResourceLocation type, final CompoundTag tag) {
-        return RefinedStorageApi.INSTANCE.getResourceTypeRegistry().get(type)
-            .flatMap(resourceType -> resourceType.getMapCodec().codec().parse(NbtOps.INSTANCE, tag).result());
+    static <T> Optional<PlatformResourceKey> decode(final Identifier type, final Codec<T> codec, final T value) {
+        return codec.encodeStart(JsonOps.INSTANCE, value).result().flatMap(encoded ->
+            RefinedStorageApi.INSTANCE.getResourceTypeRegistry().get(type)
+                .flatMap(resourceType -> resourceType.getMapCodec().codec().parse(JsonOps.INSTANCE, encoded).result()));
     }
 
-    static Optional<CompoundTag> encode(final ResourceKey resource, final ResourceLocation type) {
+    static <T> Optional<T> encode(final ResourceKey resource, final Identifier type, final Codec<T> codec) {
         if (!(resource instanceof PlatformResourceKey platform)
             || RefinedStorageApi.INSTANCE.getResourceTypeRegistry().getId(platform.getResourceType()).filter(type::equals).isEmpty()) {
             return Optional.empty();
         }
-        return platform.getResourceType().getMapCodec().codec().encodeStart(NbtOps.INSTANCE, platform).result()
-            .filter(CompoundTag.class::isInstance).map(CompoundTag.class::cast);
+        return platform.getResourceType().getMapCodec().codec().encodeStart(JsonOps.INSTANCE, platform).result()
+            .flatMap(encoded -> codec.parse(JsonOps.INSTANCE, encoded).result());
     }
 
     static Optional<PlatformResourceKey> energy() {
-        final CompoundTag tag = new CompoundTag();
-        tag.putString("energy", "refinedtypes:fe");
-        return decode(ENERGY, tag);
+        return decode(ENERGY, Codec.STRING.fieldOf("energy").codec(), "refinedtypes:fe");
     }
 }

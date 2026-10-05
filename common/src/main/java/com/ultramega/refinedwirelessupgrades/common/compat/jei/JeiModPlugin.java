@@ -13,13 +13,13 @@ import mezz.jei.api.JeiPlugin;
 import mezz.jei.api.gui.handlers.IGuiContainerHandler;
 import mezz.jei.api.registration.IGuiHandlerRegistration;
 import net.minecraft.client.renderer.Rect2i;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import static com.ultramega.refinedwirelessupgrades.common.util.InsertExportIdentifierUtil.createInsertExportIdentifier;
 
 @JeiPlugin
 public class JeiModPlugin implements IModPlugin {
-    private static final ResourceLocation ID = createInsertExportIdentifier("plugin");
+    private static final Identifier ID = createInsertExportIdentifier("plugin");
 
     @Override
     public void registerGuiHandlers(final IGuiHandlerRegistration registration) {
@@ -53,7 +53,7 @@ public class JeiModPlugin implements IModPlugin {
     }
 
     @Override
-    public ResourceLocation getPluginUid() {
+    public Identifier getPluginUid() {
         return ID;
     }
 }

@@ -10,7 +10,7 @@ import java.util.function.Function;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import org.apiguardian.api.API;
 import org.apiguardian.api.API.Status;
@@ -49,7 +49,7 @@ public final class WirelessGridSideButtonRegistry {
 
     /** Convenience registration for a sprite, tooltip title and click action */
     public static void register(final Item upgrade,
-                                final ResourceLocation sprite,
+                                final Identifier sprite,
                                 final Component title,
                                 final Consumer<WirelessGridSideButtonContext> onPress) {
         requireNonNull(sprite, "sprite");
@@ -61,7 +61,7 @@ public final class WirelessGridSideButtonRegistry {
             }
         }) {
             @Override
-            protected ResourceLocation getSprite() {
+            protected Identifier getSprite() {
                 return sprite;
             }
 

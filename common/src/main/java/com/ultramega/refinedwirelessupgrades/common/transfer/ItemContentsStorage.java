@@ -12,11 +12,11 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 
 public final class ItemContentsStorage implements Storage {
-    private static final ResourceLocation ENERGY_TYPE = ResourceLocation.fromNamespaceAndPath("refinedtypes", "energy");
+    private static final Identifier ENERGY_TYPE = Identifier.fromNamespaceAndPath("refinedtypes", "energy");
     private static Adapter adapter = new Adapter() {
         @Override
         public List<ResourceAmount> getContents(final ItemStack stack) {

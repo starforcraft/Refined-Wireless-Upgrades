@@ -4,31 +4,26 @@ import com.ultramega.refinedwirelessupgrades.common.Platform;
 import com.ultramega.refinedwirelessupgrades.common.ServerConfig;
 import com.ultramega.refinedwirelessupgrades.common.mixin.RefinedStorageApiAccessor;
 import com.ultramega.refinedwirelessupgrades.common.mixin.RefinedStorageApiProxyInvoker;
-import com.ultramega.refinedwirelessupgrades.common.registry.ContentIds;
+import com.ultramega.refinedwirelessupgrades.common.registry.Items;
+import com.ultramega.refinedwirelessupgrades.common.registry.ModDataComponents;
 
 import com.refinedmods.refinedstorage.common.api.RefinedStorageApi;
-import com.refinedmods.refinedstorage.common.api.support.slotreference.SlotReference;
+import com.refinedmods.refinedstorage.common.api.support.energy.EnergyItemContext;
+import com.refinedmods.refinedstorage.common.api.support.slotreference.PlayerSlotReference;
 import com.refinedmods.refinedstorage.common.grid.WirelessGridItem;
 import com.refinedmods.refinedstorage.common.upgrade.UpgradeContainer;
-import com.refinedmods.refinedstorage.common.util.ContainerUtil;
 
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.component.CustomData;
 
-import static com.ultramega.refinedwirelessupgrades.common.util.InsertExportIdentifierUtil.MOD_ID;
 
 public final class WirelessGridUpgradeStorage {
-    private static final String UPGRADES_TAG = "Upgrades";
-    private static final String ACTIVE_SLOTS_TAG = "ActiveUpgradeSlots";
     private static final String WIRELESS_CRAFTING_GRID_CLASS = "com.refinedmods.refinedstorage.quartzarsenal.common.wirelesscraftinggrid.WirelessCraftingGridItem";
     private static final String WIRELESS_UNIVERSAL_GRID_CLASS = "com.ultramega.universalgrid.common.wirelessuniversalgrid.WirelessUniversalGridItem";
 
@@ -38,17 +33,13 @@ public final class WirelessGridUpgradeStorage {
     }
 
     public static long getEnergyCapacityBonus(final ItemStack wirelessGrid) {
-        final CompoundTag root = getRoot(wirelessGrid);
-        final CompoundTag upgrades = root.getCompound(UPGRADES_TAG);
-        final int slots = root.contains(ACTIVE_SLOTS_TAG)
-            ? Math.clamp(root.getInt(ACTIVE_SLOTS_TAG), 1, ServerConfig.MAX_WIRELESS_GRID_UPGRADE_SLOTS)
-            : ServerConfig.MAX_WIRELESS_GRID_UPGRADE_SLOTS;
+        final WirelessGridUpgradeState data = wirelessGrid.getOrDefault(ModDataComponents.INSTANCE.getGridUpgrades(), WirelessGridUpgradeState.EMPTY);
         int cards = 0;
-        for (int slot = 0; slot < slots && cards < WirelessGridEnergyStorage.MAX_CARDS; ++slot) {
-            final CompoundTag item = upgrades.getCompound("i" + slot);
-            final int count = item.contains("count") ? item.getInt("count") : 1;
-            if (ContentIds.ENERGY_CAPACITY_UPGRADE.toString().equals(item.getString("id")) && count > 0) {
-                cards += Math.min(count, WirelessGridEnergyStorage.MAX_CARDS - cards);
+        final var upgrades = data.items().allItemsCopyStream().limit(data.activeSlots()).iterator();
+        while (upgrades.hasNext() && cards < WirelessGridEnergyStorage.MAX_CARDS) {
+            final ItemStack upgrade = upgrades.next();
+            if (upgrade.is(Items.INSTANCE.getEnergyCapacityUpgrade())) {
+                cards += Math.min(upgrade.getCount(), WirelessGridEnergyStorage.MAX_CARDS - cards);
             }
         }
         if (cards == 0) {
@@ -59,20 +50,8 @@ public final class WirelessGridUpgradeStorage {
     }
 
     public static boolean hasUpgrades(final ItemStack wirelessGrid) {
-        if (!wirelessGrid.has(DataComponents.CUSTOM_DATA)) {
-            return false;
-        }
-        final CompoundTag root = getRoot(wirelessGrid);
-        if (!root.contains(UPGRADES_TAG)) {
-            return false;
-        }
-        final CompoundTag upgrades = root.getCompound(UPGRADES_TAG);
-        for (int slot = 0; slot < ServerConfig.MAX_WIRELESS_GRID_UPGRADE_SLOTS; ++slot) {
-            if (ContainerUtil.hasItemInSlot(upgrades, slot)) {
-                return true;
-            }
-        }
-        return false;
+        return wirelessGrid.getOrDefault(ModDataComponents.INSTANCE.getGridUpgrades(), WirelessGridUpgradeState.EMPTY)
+            .items().nonEmptyItemCopyStream().findAny().isPresent();
     }
 
     public static boolean isSupportedWirelessGrid(final ItemStack stack) {
@@ -91,22 +70,19 @@ public final class WirelessGridUpgradeStorage {
         return false;
     }
 
-    public static UpgradeContainer createContainer(final ItemStack wirelessGrid, final Player player) {
+    public static ObservableUpgradeContainer createContainer(final ItemStack wirelessGrid, final Player player) {
         return createContainer(wirelessGrid, player, getSlotCount(player));
     }
 
-    public static UpgradeContainer createContainer(final ItemStack wirelessGrid, final Player player, final int slotCount) {
-        final UpgradeContainer container = new UpgradeContainer(MoreUpgradeDestinations.WIRELESS_GRIDS,
+    public static ObservableUpgradeContainer createContainer(final ItemStack wirelessGrid, final Player player, final int slotCount) {
+        final ObservableUpgradeContainer container = new ObservableUpgradeContainer(MoreUpgradeDestinations.WIRELESS_GRIDS,
             Math.clamp(slotCount, 1, ServerConfig.MAX_WIRELESS_GRID_UPGRADE_SLOTS));
-        final CompoundTag root = getRoot(wirelessGrid);
-        if (root.contains(UPGRADES_TAG)) {
-            ContainerUtil.read(root.getCompound(UPGRADES_TAG), container, player.registryAccess());
-        }
+        ContainerSerialization.restore(wirelessGrid.getOrDefault(ModDataComponents.INSTANCE.getGridUpgrades(), WirelessGridUpgradeState.EMPTY).items(), container);
         return container;
     }
 
     public static int getSlotCount(final Player player) {
-        return player.level().isClientSide
+        return player.level().isClientSide()
             ? clientSlotCount
             : Math.clamp(Platform.getServerConfig().getWirelessGridUpgradeSlots(), 1, ServerConfig.MAX_WIRELESS_GRID_UPGRADE_SLOTS);
     }
@@ -155,20 +131,16 @@ public final class WirelessGridUpgradeStorage {
     public static void save(final UpgradeContainer container,
                             final ItemStack wirelessGrid,
                             final Player player) {
-        final CompoundTag customData = wirelessGrid.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
-        final CompoundTag root = customData.contains(MOD_ID) ? customData.getCompound(MOD_ID) : new CompoundTag();
         // Preserve inactive slots even when the configured capacity was lowered
         final UpgradeContainer stored = new UpgradeContainer(MoreUpgradeDestinations.WIRELESS_GRIDS, ServerConfig.MAX_WIRELESS_GRID_UPGRADE_SLOTS);
-        ContainerUtil.read(root.getCompound(UPGRADES_TAG), stored, player.registryAccess());
+        ContainerSerialization.restore(wirelessGrid.getOrDefault(ModDataComponents.INSTANCE.getGridUpgrades(), WirelessGridUpgradeState.EMPTY).items(), stored);
         for (int slot = 0; slot < Math.min(container.getContainerSize(), stored.getContainerSize()); ++slot) {
             stored.setItem(slot, container.getItem(slot).copy());
         }
-        root.put(UPGRADES_TAG, ContainerUtil.write(stored, player.registryAccess()));
-        root.putInt(ACTIVE_SLOTS_TAG, Math.min(container.getContainerSize(), getSlotCount(player)));
-        customData.put(MOD_ID, root);
-        wirelessGrid.set(DataComponents.CUSTOM_DATA, CustomData.of(customData));
-        if (!player.level().isClientSide) {
-            RefinedStorageApi.INSTANCE.getEnergyStorage(wirelessGrid).ifPresent(storage -> {
+        wirelessGrid.set(ModDataComponents.INSTANCE.getGridUpgrades(), new WirelessGridUpgradeState(ContainerSerialization.capture(stored),
+            Math.min(container.getContainerSize(), getSlotCount(player))));
+        if (!player.level().isClientSide()) {
+            RefinedStorageApi.INSTANCE.getEnergyStorage(wirelessGrid, EnergyItemContext.READONLY).ifPresent(storage -> {
                 final var energyComponent = com.refinedmods.refinedstorage.common.content.DataComponents.INSTANCE.getEnergy();
                 final long energy = wirelessGrid.getOrDefault(energyComponent, 0L);
                 if (energy > storage.getCapacity()) {
@@ -178,12 +150,7 @@ public final class WirelessGridUpgradeStorage {
         }
     }
 
-    private static CompoundTag getRoot(final ItemStack wirelessGrid) {
-        final CompoundTag customData = wirelessGrid.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
-        return customData.contains(MOD_ID) ? customData.getCompound(MOD_ID) : new CompoundTag();
-    }
-
-    public static List<SlotReference> find(final Player player) {
+    public static List<PlayerSlotReference> find(final Player player) {
         return ((RefinedStorageApiAccessor) ((RefinedStorageApiProxyInvoker) RefinedStorageApi.INSTANCE).wirelessUpgrades$ensureLoaded())
             .wirelessUpgrades$getSlotReferenceProvider().find(player, SupportedItems.ITEMS);
     }

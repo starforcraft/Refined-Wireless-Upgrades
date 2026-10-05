@@ -7,7 +7,7 @@ import com.ultramega.refinedwirelessupgrades.common.util.IGridUpgrade;
 import com.ultramega.refinedwirelessupgrades.common.util.UpgradeType;
 
 import com.refinedmods.refinedstorage.common.Platform;
-import com.refinedmods.refinedstorage.common.api.support.slotreference.SlotReference;
+import com.refinedmods.refinedstorage.common.api.support.slotreference.PlayerSlotReference;
 import com.refinedmods.refinedstorage.common.upgrade.UpgradeSlot;
 
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -34,7 +34,7 @@ public record OpenUpgradePayload(UpgradeType upgradeType) implements CustomPacke
             return;
         }
 
-        final SlotReference gridSlotReference = gridSlotReferenceAccessor.wirelessUpgrades$getGridSlotReference();
+        final PlayerSlotReference gridSlotReference = gridSlotReferenceAccessor.wirelessUpgrades$getGridSlotReference();
         if (gridSlotReference == null) {
             return;
         }

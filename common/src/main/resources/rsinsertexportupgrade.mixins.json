@@ -8,6 +8,7 @@
     "AbstractGridContainerMenuMixin",
     "RefinedStorageApiAccessor",
     "RefinedStorageApiEnergyMixin",
+    "WirelessGridItemEnergyMixin",
     "RefinedStorageApiProxyInvoker",
     "WirelessGridContainerMenuMixin",
     "WirelessCraftingGridContainerMenuMixin",

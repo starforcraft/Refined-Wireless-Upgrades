@@ -8,7 +8,6 @@ import com.refinedmods.refinedstorage.common.api.RefinedStorageApi;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import net.minecraft.core.HolderLookup;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import org.apiguardian.api.API;
@@ -40,7 +39,7 @@ public final class WirelessGridUpgradeRegistry {
      */
     public static void register(final Item item, final int maxAmount, final WirelessGridUpgradeTicker ticker) {
         requireNonNull(ticker, "ticker");
-        registerFactory(item, maxAmount, (stack, registries) -> ticker);
+        registerFactory(item, maxAmount, (stack) -> ticker);
     }
 
     /** Registers a factory and the maximum number of this upgrade allowed in a grid. */
@@ -66,11 +65,11 @@ public final class WirelessGridUpgradeRegistry {
     }
 
     /** Creates behavior from a defensive snapshot; unknown and empty stacks never tick */
-    public static WirelessGridUpgradeTicker createTicker(final ItemStack stack, final HolderLookup.Provider registries) {
+    public static WirelessGridUpgradeTicker createTicker(final ItemStack stack) {
         if (stack.isEmpty()) {
             return WirelessGridUpgradeTicker.NONE;
         }
         final WirelessGridUpgradeFactory factory = FACTORIES.get(stack.getItem());
-        return factory == null ? WirelessGridUpgradeTicker.NONE : requireNonNull(factory.create(stack.copy(), registries), "Upgrade factory returned a null ticker");
+        return factory == null ? WirelessGridUpgradeTicker.NONE : requireNonNull(factory.create(stack.copy()), "Upgrade factory returned a null ticker");
     }
 }

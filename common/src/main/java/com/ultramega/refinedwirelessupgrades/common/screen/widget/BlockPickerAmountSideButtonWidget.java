@@ -13,7 +13,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 
 import static com.ultramega.refinedwirelessupgrades.common.util.InsertExportIdentifierUtil.createInsertExportIdentifier;
@@ -21,7 +21,7 @@ import static com.ultramega.refinedwirelessupgrades.common.util.InsertExportIden
 import static com.ultramega.refinedwirelessupgrades.common.util.InsertExportIdentifierUtil.createInsertExportTranslationKey;
 
 public class BlockPickerAmountSideButtonWidget extends AbstractSideButtonWidget {
-    private static final ResourceLocation SPRITE = createInsertExportIdentifier("block_picker_upgrade");
+    private static final Identifier SPRITE = createInsertExportIdentifier("block_picker_upgrade");
 
     private final IntSupplier amount;
 
@@ -35,7 +35,7 @@ public class BlockPickerAmountSideButtonWidget extends AbstractSideButtonWidget 
     }
 
     @Override
-    protected ResourceLocation getSprite() {
+    protected Identifier getSprite() {
         return SPRITE;
     }
 

@@ -23,7 +23,7 @@ import com.refinedmods.refinedstorage.fabric.api.RefinedStoragePlugin;
 import me.shedaniel.autoconfig.AutoConfig;
 import me.shedaniel.autoconfig.serializer.Toml4jConfigSerializer;
 import net.fabricmc.api.ModInitializer;
-import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
+import net.fabricmc.fabric.api.creativetab.v1.CreativeModeTabEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -39,6 +39,7 @@ public class ModInitializerImpl extends AbstractModInitializer implements Refine
     public void onApiAvailable(final RefinedStorageApi refinedStorageApi) {
         Platform.setConfigProvider(ConfigImpl::get);
         Platform.setServerConfigProvider(ServerConfigImpl::get);
+        this.registerDataComponents(new DirectRegistryCallback<>(BuiltInRegistries.DATA_COMPONENT_TYPE));
         this.registerItems(new DirectRegistryCallback<>(BuiltInRegistries.ITEM));
         this.registerUpgradeMappings();
         this.registerCreativeModeTabListener(refinedStorageApi);
@@ -58,22 +59,22 @@ public class ModInitializerImpl extends AbstractModInitializer implements Refine
             Registries.CREATIVE_MODE_TAB,
             refinedStorageApi.getCreativeModeTabId()
         );
-        ItemGroupEvents.modifyEntriesEvent(creativeModeTab).register(
+        CreativeModeTabEvents.modifyOutputEvent(creativeModeTab).register(
             entries -> CreativeModeTabItems.appendItems(entries::accept)
         );
     }
 
     private void registerNetworking() {
-        PayloadTypeRegistry.playC2S().register(OpenUpgradePayload.TYPE, OpenUpgradePayload.STREAM_CODEC);
-        PayloadTypeRegistry.playC2S().register(ReturnToGridPayload.TYPE, ReturnToGridPayload.STREAM_CODEC);
-        PayloadTypeRegistry.playC2S().register(UpdateSelectedInventorySlotsPayload.TYPE, UpdateSelectedInventorySlotsPayload.STREAM_CODEC);
-        PayloadTypeRegistry.playC2S().register(BlockPickerPayload.TYPE, BlockPickerPayload.STREAM_CODEC);
-        PayloadTypeRegistry.playC2S().register(UpdateBlockPickerAmountPayload.TYPE, UpdateBlockPickerAmountPayload.STREAM_CODEC);
-        PayloadTypeRegistry.playC2S().register(CurioSlotUpdatePayload.TYPE, CurioSlotUpdatePayload.STREAM_CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(OpenUpgradePayload.TYPE, OpenUpgradePayload.STREAM_CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(ReturnToGridPayload.TYPE, ReturnToGridPayload.STREAM_CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(UpdateSelectedInventorySlotsPayload.TYPE, UpdateSelectedInventorySlotsPayload.STREAM_CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(BlockPickerPayload.TYPE, BlockPickerPayload.STREAM_CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(UpdateBlockPickerAmountPayload.TYPE, UpdateBlockPickerAmountPayload.STREAM_CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(CurioSlotUpdatePayload.TYPE, CurioSlotUpdatePayload.STREAM_CODEC);
 
-        PayloadTypeRegistry.playS2C().register(SyncSelectedInventorySlotsPayload.TYPE, SyncSelectedInventorySlotsPayload.STREAM_CODEC);
-        PayloadTypeRegistry.playS2C().register(SyncSelectedCurioSlotsPayload.TYPE, SyncSelectedCurioSlotsPayload.STREAM_CODEC);
-        PayloadTypeRegistry.playS2C().register(SyncUpgradeSlotCountPayload.TYPE, SyncUpgradeSlotCountPayload.STREAM_CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(SyncSelectedInventorySlotsPayload.TYPE, SyncSelectedInventorySlotsPayload.STREAM_CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(SyncSelectedCurioSlotsPayload.TYPE, SyncSelectedCurioSlotsPayload.STREAM_CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(SyncUpgradeSlotCountPayload.TYPE, SyncUpgradeSlotCountPayload.STREAM_CODEC);
 
         ServerPlayNetworking.registerGlobalReceiver(
             OpenUpgradePayload.TYPE,

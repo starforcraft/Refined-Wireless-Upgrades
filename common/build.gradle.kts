@@ -21,7 +21,6 @@ val modVersion: String by project
 refinedarchitect {
     version = modVersion
     common()
-    testing()
     publishing {
         maven = true
     }

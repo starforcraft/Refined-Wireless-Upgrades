@@ -24,6 +24,6 @@ public final class UpgradeScreenNavigation {
         }
         restoreMouse = false;
         final Minecraft minecraft = Minecraft.getInstance();
-        GLFW.glfwSetCursorPos(minecraft.getWindow().getWindow(), mouseX, mouseY);
+        GLFW.glfwSetCursorPos(minecraft.getWindow().handle(), mouseX, mouseY);
     }
 }

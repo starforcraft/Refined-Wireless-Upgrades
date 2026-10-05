@@ -7,7 +7,7 @@ import java.util.List;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import static com.ultramega.refinedwirelessupgrades.common.util.InsertExportIdentifierUtil.createInsertExportIdentifier;
 import static com.ultramega.refinedwirelessupgrades.common.util.InsertExportIdentifierUtil.createInsertExportTranslation;
@@ -21,7 +21,7 @@ public final class MagnetOptionSideButtonWidget extends AbstractSideButtonWidget
     }
 
     @Override
-    protected ResourceLocation getSprite() {
+    protected Identifier getSprite() {
         return createInsertExportIdentifier(this.property.getValue() ? "network" : "inventory");
     }
 

@@ -14,16 +14,16 @@ import java.util.Optional;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.ImageButton;
 import net.minecraft.client.gui.components.WidgetSprites;
 import net.minecraft.client.renderer.Rect2i;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.inventory.InventoryMenu;
+import net.minecraft.resources.Identifier;
 
 public final class CuriosSlotPanel {
-    private static final ResourceLocation INVENTORY = ResourceLocation.fromNamespaceAndPath("curios", "textures/gui/curios/inventory.png");
+    private static final Identifier INVENTORY = Identifier.fromNamespaceAndPath("curios", "textures/gui/curios/inventory.png");
     private static final int MAX_ROWS = 8;
     private static final int MAX_PAGE_SIZE = 48;
     private static final int SCREEN_GAP = 2;
@@ -49,7 +49,7 @@ public final class CuriosSlotPanel {
         this.type = type;
     }
 
-    public void render(final GuiGraphics graphics, final Font font, final int left, final int top, final int mouseX, final int mouseY) {
+    public void render(final GuiGraphicsExtractor graphics, final Font font, final int left, final int top, final int mouseX, final int mouseY) {
         this.visibleSlots = 0;
         if (!this.open || Minecraft.getInstance().player == null) {
             return;
@@ -81,9 +81,9 @@ public final class CuriosSlotPanel {
             final int sx = this.x + 8 + cell % this.columns * 18;
             final int sy = this.y + this.slotTop + 8 + cell / this.columns * 18;
             if (slot.stack().isEmpty()) {
-                graphics.blit(sx, sy, 0, 16, 16, Minecraft.getInstance().getTextureAtlas(InventoryMenu.BLOCK_ATLAS).apply(slot.icon()));
+                graphics.blitSprite(RenderPipelines.GUI_TEXTURED, slot.icon(), sx, sy, 16, 16);
             } else {
-                graphics.renderItem(slot.stack(), sx, sy);
+                graphics.item(slot.stack(), sx, sy);
             }
             final int filter = this.menu.getSelectedCurioSlots().getOrDefault(slot.key(), 0);
             UpgradeScreen.renderSlotHighlight(graphics, this.type, font, sx, sy, filter > 0, filter);
@@ -137,7 +137,7 @@ public final class CuriosSlotPanel {
         return false;
     }
 
-    private void drawSlotColumns(final GuiGraphics graphics) {
+    private void drawSlotColumns(final GuiGraphicsExtractor graphics) {
         for (int cell = 0; cell < this.visibleSlots; ++cell) {
             final int column = cell % this.columns;
             final int row = cell / this.columns;
@@ -168,13 +168,13 @@ public final class CuriosSlotPanel {
 
     ImageButton createButton(final int left, final int top) {
         final WidgetSprites sprites = new WidgetSprites(
-            ResourceLocation.fromNamespaceAndPath("curios", "button"),
-            ResourceLocation.fromNamespaceAndPath("curios", "button_highlighted")
+            Identifier.fromNamespaceAndPath("curios", "button"),
+            Identifier.fromNamespaceAndPath("curios", "button_highlighted")
         );
         return new ImageButton(left + 4, top + 57, 10, 10, sprites, ignored -> this.open = !this.open) {
             @Override
-            public void renderWidget(final GuiGraphics graphics, final int mouseX, final int mouseY, final float partialTicks) {
-                graphics.blitSprite(this.sprites.get(this.isActive(), this.isHovered()),
+            public void extractContents(final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY, final float partialTicks) {
+                graphics.blitSprite(RenderPipelines.GUI_TEXTURED, this.sprites.get(this.isActive(), this.isHovered()),
                     this.getX(), this.getY(), this.getWidth(), this.getHeight());
             }
         };
@@ -198,12 +198,12 @@ public final class CuriosSlotPanel {
         return false;
     }
 
-    public void renderTooltip(final GuiGraphics graphics, final Font font, final int mouseX, final int mouseY) {
+    public void renderTooltip(final GuiGraphicsExtractor graphics, final Font font, final int mouseX, final int mouseY) {
         if (!this.open || this.visibleSlots == 0) {
             return;
         }
         if (this.lastPage() > 0 && (this.overPageButton(mouseX, mouseY, false) || this.overPageButton(mouseX, mouseY, true))) {
-            graphics.renderTooltip(font, Component.translatable("gui.curios.page", this.page + 1, this.lastPage() + 1), mouseX, mouseY);
+            graphics.setTooltipForNextFrame(font, Component.translatable("gui.curios.page", this.page + 1, this.lastPage() + 1), mouseX, mouseY);
             return;
         }
         final int rx = mouseX - this.x - 8;
@@ -219,7 +219,7 @@ public final class CuriosSlotPanel {
                 if (!slot.stack().isEmpty()) {
                     lines.add(slot.stack().getHoverName());
                 }
-                graphics.renderTooltip(font, lines, Optional.empty(), mouseX, mouseY);
+                graphics.setTooltipForNextFrame(font, lines, Optional.empty(), mouseX, mouseY);
             }
         }
     }
@@ -254,15 +254,15 @@ public final class CuriosSlotPanel {
         return mouseX >= bx && mouseX < bx + 11 && mouseY >= this.y && mouseY < this.y + 12;
     }
 
-    private void drawPageButton(final GuiGraphics graphics, final boolean next, final int mouseX, final int mouseY) {
+    private void drawPageButton(final GuiGraphicsExtractor graphics, final boolean next, final int mouseX, final int mouseY) {
         final boolean enabled = next ? this.page < this.lastPage() : this.page > 0;
         final boolean hovered = this.overPageButton(mouseX, mouseY, next);
         final int u = (next ? 43 : 32) + (enabled && hovered ? 22 : 0);
         this.blit(graphics, this.pageButtonX(next), this.y, u, enabled ? 25 : 37, 11, 12);
     }
 
-    private void blit(final GuiGraphics graphics, final int x, final int y, final int u, final int v, final int width, final int height) {
-        graphics.blit(INVENTORY, x, y, u, v, width, height, 256, 256);
+    private void blit(final GuiGraphicsExtractor graphics, final int x, final int y, final int u, final int v, final int width, final int height) {
+        graphics.blit(RenderPipelines.GUI_TEXTURED, INVENTORY, x, y, u, v, width, height, 256, 256);
     }
 
     private int lastPage() {

@@ -16,7 +16,6 @@ import com.refinedmods.refinedstorage.common.support.resource.ItemResource;
 import java.util.Comparator;
 import java.util.List;
 
-import net.minecraft.core.HolderLookup;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
@@ -29,9 +28,9 @@ public final class MagnetUpgradeProcessor {
     private MagnetUpgradeProcessor() {
     }
 
-    public static WirelessGridUpgradeTicker createTicker(final ItemStack stack, final HolderLookup.Provider registries) {
-        final Filter pickup = MagnetConfiguration.createRuntimeFilter(stack, true, registries);
-        final Filter insert = MagnetConfiguration.createRuntimeFilter(stack, false, registries);
+    public static WirelessGridUpgradeTicker createTicker(final ItemStack stack) {
+        final Filter pickup = MagnetConfiguration.createRuntimeFilter(stack, true);
+        final Filter insert = MagnetConfiguration.createRuntimeFilter(stack, false);
         final boolean toNetwork = MagnetConfiguration.getOption(stack, MagnetConfiguration.TO_NETWORK_TAG);
         return context -> tick(context, pickup, insert, toNetwork);
     }

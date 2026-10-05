@@ -2,11 +2,9 @@ package com.ultramega.refinedwirelessupgrades.common.api.client;
 
 import com.ultramega.refinedwirelessupgrades.common.util.GridSlotReferenceAccessor;
 
-import com.refinedmods.refinedstorage.common.api.support.slotreference.SlotReference;
+import com.refinedmods.refinedstorage.common.api.support.slotreference.PlayerSlotReference;
 import com.refinedmods.refinedstorage.common.grid.screen.AbstractGridScreen;
 import com.refinedmods.refinedstorage.common.upgrade.UpgradeSlot;
-
-import javax.annotation.Nullable;
 
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
@@ -14,6 +12,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import org.apiguardian.api.API;
 import org.apiguardian.api.API.Status;
+import org.jspecify.annotations.Nullable;
 
 /** Client-only context belonging to one screen */
 @API(status = Status.STABLE)
@@ -31,7 +30,7 @@ public record WirelessGridSideButtonContext(AbstractGridScreen<?> screen, Invent
     }
 
     @Nullable
-    public SlotReference getGridSlotReference() {
+    public PlayerSlotReference getGridSlotReference() {
         return this.screen.getMenu() instanceof GridSlotReferenceAccessor accessor ? accessor.wirelessUpgrades$getGridSlotReference() : null;
     }
 

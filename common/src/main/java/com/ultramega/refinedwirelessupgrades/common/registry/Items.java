@@ -3,7 +3,8 @@ package com.ultramega.refinedwirelessupgrades.common.registry;
 import com.refinedmods.refinedstorage.common.api.upgrade.AbstractUpgradeItem;
 
 import java.util.function.Supplier;
-import javax.annotation.Nullable;
+
+import org.jspecify.annotations.Nullable;
 
 import static java.util.Objects.requireNonNull;
 

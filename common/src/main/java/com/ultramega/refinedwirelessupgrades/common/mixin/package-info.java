@@ -1,7 +1,4 @@
-@ParametersAreNonnullByDefault
-@FieldsAndMethodsAreNonnullByDefault
+@NullMarked
 package com.ultramega.refinedwirelessupgrades.common.mixin;
 
-import com.refinedmods.refinedstorage.api.core.FieldsAndMethodsAreNonnullByDefault;
-
-import javax.annotation.ParametersAreNonnullByDefault;
+import org.jspecify.annotations.NullMarked;

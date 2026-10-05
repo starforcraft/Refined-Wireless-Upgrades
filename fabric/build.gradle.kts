@@ -49,11 +49,11 @@ dependencies {
     compileOnly(project(":common"))
     commonJava(project(path = ":common", configuration = "commonJava"))
     commonResources(project(path = ":common", configuration = "commonResources"))
-    modApi("com.refinedmods.refinedstorage:refinedstorage-fabric:${refinedstorageVersion}")
-    modApi("com.refinedmods.refinedstorage:refinedstorage-quartz-arsenal-fabric:${refinedstorageQuartzArsenalVersion}")
+    api("com.refinedmods.refinedstorage:refinedstorage-fabric:${refinedstorageVersion}")
+    api("com.refinedmods.refinedstorage:refinedstorage-quartz-arsenal-fabric:${refinedstorageQuartzArsenalVersion}")
 
-    modRuntimeOnly("mezz.jei:jei-${minecraftVersion}-fabric:${jeiVersion}")
-    modCompileOnlyApi("mezz.jei:jei-${minecraftVersion}-common-api:${jeiVersion}")
-    modCompileOnlyApi("mezz.jei:jei-${minecraftVersion}-common:${jeiVersion}")
-    modCompileOnlyApi("mezz.jei:jei-${minecraftVersion}-fabric-api:${jeiVersion}")
+    runtimeOnly("mezz.jei:jei-${minecraftVersion}-fabric:${jeiVersion}")
+    compileOnlyApi("mezz.jei:jei-${minecraftVersion}-common-api:${jeiVersion}")
+    compileOnlyApi("mezz.jei:jei-${minecraftVersion}-common:${jeiVersion}")
+    compileOnlyApi("mezz.jei:jei-${minecraftVersion}-fabric-api:${jeiVersion}")
 }

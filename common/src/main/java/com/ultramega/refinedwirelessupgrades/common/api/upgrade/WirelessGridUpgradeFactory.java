@@ -1,6 +1,5 @@
 package com.ultramega.refinedwirelessupgrades.common.api.upgrade;
 
-import net.minecraft.core.HolderLookup;
 import net.minecraft.world.item.ItemStack;
 import org.apiguardian.api.API;
 import org.apiguardian.api.API.Status;
@@ -15,5 +14,5 @@ public interface WirelessGridUpgradeFactory {
      * Return {@link WirelessGridUpgradeTicker#NONE} when no ticking is required.
      * Cache parsed configuration here, but keep persistent state in item data, not in the ticker.
      */
-    WirelessGridUpgradeTicker create(ItemStack upgrade, HolderLookup.Provider registries);
+    WirelessGridUpgradeTicker create(ItemStack upgrade);
 }

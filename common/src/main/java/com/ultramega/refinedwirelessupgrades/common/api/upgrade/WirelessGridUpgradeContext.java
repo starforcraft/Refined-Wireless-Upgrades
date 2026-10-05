@@ -2,7 +2,7 @@ package com.ultramega.refinedwirelessupgrades.common.api.upgrade;
 
 import com.refinedmods.refinedstorage.api.network.Network;
 import com.refinedmods.refinedstorage.common.api.support.network.item.NetworkItemContext;
-import com.refinedmods.refinedstorage.common.api.support.slotreference.SlotReference;
+import com.refinedmods.refinedstorage.common.api.support.slotreference.PlayerSlotReference;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
@@ -20,7 +20,7 @@ import org.apiguardian.api.API.Status;
 @API(status = Status.STABLE)
 public record WirelessGridUpgradeContext(ServerPlayer player,
                                          ItemStack wirelessGrid,
-                                         SlotReference wirelessGridSlot,
+                                         PlayerSlotReference wirelessGridSlot,
                                          int upgradeSlot,
                                          ItemStack upgradeStack,
                                          Network network,

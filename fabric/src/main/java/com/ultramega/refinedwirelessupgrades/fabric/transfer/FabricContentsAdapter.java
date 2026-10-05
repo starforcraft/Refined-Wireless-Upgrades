@@ -6,7 +6,7 @@ import com.ultramega.refinedwirelessupgrades.common.transfer.ItemContentsStorage
 import com.refinedmods.refinedstorage.api.resource.ResourceAmount;
 import com.refinedmods.refinedstorage.api.resource.ResourceKey;
 import com.refinedmods.refinedstorage.common.support.resource.FluidResource;
-import com.refinedmods.refinedstorage.fabric.util.SimpleSingleStackStorage;
+import com.refinedmods.refinedstorage.fabric.support.resource.SimpleSingleStackStorage;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,7 +23,7 @@ import static com.refinedmods.refinedstorage.fabric.support.resource.VariantUtil
 public final class FabricContentsAdapter implements ItemContentsStorage.Adapter {
     @Override
     public List<ResourceAmount> getContents(final ItemStack stack) {
-        final var item = new SimpleSingleStackStorage(stack.copy());
+        final var item = SimpleSingleStackStorage.forStack(stack.copy());
         final var storage = FluidStorage.ITEM.find(item.getStack(), ContainerItemContext.ofSingleSlot(item));
         final List<ResourceAmount> contents = new ArrayList<>();
         if (storage != null) {
@@ -41,7 +41,7 @@ public final class FabricContentsAdapter implements ItemContentsStorage.Adapter 
         if (!(resource instanceof FluidResource fluid)) {
             return Optional.empty();
         }
-        final var item = new SimpleSingleStackStorage(copy);
+        final var item = SimpleSingleStackStorage.forStack(copy);
         final var storage = FluidStorage.ITEM.find(copy, ContainerItemContext.ofSingleSlot(item));
         if (storage == null) {
             return Optional.empty();

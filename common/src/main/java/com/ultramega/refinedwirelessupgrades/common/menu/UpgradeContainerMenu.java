@@ -6,14 +6,15 @@ import com.ultramega.refinedwirelessupgrades.common.network.SyncSelectedInventor
 import com.ultramega.refinedwirelessupgrades.common.registry.Items;
 import com.ultramega.refinedwirelessupgrades.common.registry.MenuTypes;
 import com.ultramega.refinedwirelessupgrades.common.util.MoreUpgradeDestinations;
+import com.ultramega.refinedwirelessupgrades.common.util.ObservableUpgradeContainer;
 import com.ultramega.refinedwirelessupgrades.common.util.UpgradeType;
 import com.ultramega.refinedwirelessupgrades.common.util.WirelessGridUpgradeStorage;
 
 import com.refinedmods.refinedstorage.api.resource.filter.FilterMode;
 import com.refinedmods.refinedstorage.common.Platform;
 import com.refinedmods.refinedstorage.common.api.support.resource.ResourceContainer;
-import com.refinedmods.refinedstorage.common.api.support.slotreference.SlotReference;
-import com.refinedmods.refinedstorage.common.api.support.slotreference.SlotReferenceHandlerItem;
+import com.refinedmods.refinedstorage.common.api.support.slotreference.PlayerSlotReference;
+import com.refinedmods.refinedstorage.common.api.support.slotreference.UsablePlayerSlotReferencedItem;
 import com.refinedmods.refinedstorage.common.support.containermenu.AbstractResourceContainerMenu;
 import com.refinedmods.refinedstorage.common.support.containermenu.ClientProperty;
 import com.refinedmods.refinedstorage.common.support.containermenu.DisabledSlot;
@@ -23,16 +24,14 @@ import com.refinedmods.refinedstorage.common.support.containermenu.ResourceSlotT
 import com.refinedmods.refinedstorage.common.support.containermenu.ServerProperty;
 import com.refinedmods.refinedstorage.common.support.packet.s2c.S2CPackets;
 import com.refinedmods.refinedstorage.common.support.resource.ResourceContainerImpl;
-import com.refinedmods.refinedstorage.common.upgrade.UpgradeContainer;
 import com.refinedmods.refinedstorage.common.upgrade.UpgradeSlot;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
-import javax.annotation.Nullable;
 
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Inventory;
@@ -40,9 +39,11 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import org.jspecify.annotations.Nullable;
 
 public class UpgradeContainerMenu extends AbstractResourceContainerMenu {
     public static final int FILTER_SLOT_COUNT = 18;
+    public static final int UPGRADE_SLOT_COUNT = 2;
     public static final int PLAYER_INVENTORY_SLOT_COUNT = 36;
     public static final int INVENTORY_SLOT_COUNT = PLAYER_INVENTORY_SLOT_COUNT + 4;
 
@@ -52,7 +53,7 @@ public class UpgradeContainerMenu extends AbstractResourceContainerMenu {
         EquipmentSlot.LEGS,
         EquipmentSlot.FEET
     };
-    private static final ResourceLocation[] EMPTY_ARMOR_SLOT_ICONS = new ResourceLocation[] {
+    private static final Identifier[] EMPTY_ARMOR_SLOT_ICONS = new Identifier[] {
         InventoryMenu.EMPTY_ARMOR_SLOT_HELMET,
         InventoryMenu.EMPTY_ARMOR_SLOT_CHESTPLATE,
         InventoryMenu.EMPTY_ARMOR_SLOT_LEGGINGS,
@@ -63,16 +64,15 @@ public class UpgradeContainerMenu extends AbstractResourceContainerMenu {
     private final Inventory inventory;
     private final ItemStack upgradeItem;
     @Nullable
-    private final SlotReference gridSource;
+    private final PlayerSlotReference gridSource;
     private final int sourceUpgradeSlot;
     private final ResourceContainer filter = ResourceContainerImpl.createForFilter(FILTER_SLOT_COUNT);
     @Nullable
-    private final UpgradeContainer upgrades;
+    private final ObservableUpgradeContainer upgrades;
 
     @Nullable
     private Consumer<int[]> selectedInventorySlotsListener;
-    @Nullable
-    private int[] pendingSelectedInventorySlots;
+    private int @Nullable[] pendingSelectedInventorySlots;
     private Map<String, Integer> selectedCurioSlots = Map.of();
     private FilterMode filterMode;
     private boolean fuzzyMode;
@@ -81,7 +81,7 @@ public class UpgradeContainerMenu extends AbstractResourceContainerMenu {
                                  final int syncId,
                                  final Inventory inventory,
                                  final ItemStack upgradeItem,
-                                 @Nullable final SlotReference gridSource,
+                                 @Nullable final PlayerSlotReference gridSource,
                                  final int sourceUpgradeSlot) {
         super(type == UpgradeType.INSERT ? MenuTypes.INSTANCE.getInsertUpgrade() : MenuTypes.INSTANCE.getExportUpgrade(), syncId, inventory.player);
         this.type = type;
@@ -90,27 +90,27 @@ public class UpgradeContainerMenu extends AbstractResourceContainerMenu {
         this.gridSource = gridSource;
         this.sourceUpgradeSlot = sourceUpgradeSlot;
         this.disabledSlot = gridSource;
-        this.filterMode = inventory.player.level().isClientSide ? FilterMode.BLOCK : UpgradeConfiguration.getFilterMode(upgradeItem);
-        this.fuzzyMode = !inventory.player.level().isClientSide && UpgradeConfiguration.isFuzzyMode(upgradeItem);
+        this.filterMode = inventory.player.level().isClientSide() ? FilterMode.BLOCK : UpgradeConfiguration.getFilterMode(upgradeItem);
+        this.fuzzyMode = !inventory.player.level().isClientSide() && UpgradeConfiguration.isFuzzyMode(upgradeItem);
 
-        if (!inventory.player.level().isClientSide) {
-            UpgradeConfiguration.loadFilter(upgradeItem, this.filter, inventory.player.registryAccess());
+        if (!inventory.player.level().isClientSide()) {
+            UpgradeConfiguration.loadFilter(upgradeItem, this.filter);
             this.filter.setListener(() -> {
-                UpgradeConfiguration.saveFilter(this.upgradeItem, this.filter, this.inventory.player.registryAccess());
+                UpgradeConfiguration.saveFilter(this.upgradeItem, this.filter);
                 this.persist();
             });
         }
 
         if (type == UpgradeType.EXPORT) {
-            this.upgrades = new UpgradeContainer(MoreUpgradeDestinations.EXPORT_UPGRADE, 2);
-            if (!inventory.player.level().isClientSide) {
-                UpgradeConfiguration.loadUpgrades(upgradeItem, this.upgrades, inventory.player.registryAccess());
-                this.upgrades.addListener(container -> {
-                    UpgradeConfiguration.saveUpgrades(this.upgradeItem, container, this.inventory.player.registryAccess());
+            this.upgrades = new ObservableUpgradeContainer(MoreUpgradeDestinations.EXPORT_UPGRADE, UPGRADE_SLOT_COUNT);
+            if (!inventory.player.level().isClientSide()) {
+                UpgradeConfiguration.loadUpgrades(upgradeItem, this.upgrades);
+                this.upgrades.setChangeListener(container -> {
+                    UpgradeConfiguration.saveUpgrades(this.upgradeItem, container);
                     this.persist();
                 });
             }
-            for (int i = 0; i < 2; ++i) {
+            for (int i = 0; i < UPGRADE_SLOT_COUNT; ++i) {
                 this.addSlot(new UpgradeSlot(this.upgrades, i, 202, 6 + i * 18));
             }
             this.transferManager.addBiTransfer(inventory, this.upgrades);
@@ -133,7 +133,7 @@ public class UpgradeContainerMenu extends AbstractResourceContainerMenu {
         this.addUpgradePlayerInventory(inventory, 23, 81);
         this.addUpgradeArmor(inventory, 2, 70);
 
-        if (inventory.player.level().isClientSide) {
+        if (inventory.player.level().isClientSide()) {
             this.registerProperty(new ClientProperty<>(PropertyTypes.FILTER_MODE, FilterMode.BLOCK));
             this.registerProperty(new ClientProperty<>(PropertyTypes.FUZZY_MODE, false));
         } else {
@@ -159,9 +159,9 @@ public class UpgradeContainerMenu extends AbstractResourceContainerMenu {
     public static UpgradeContainerMenu server(final UpgradeType type,
                                               final int syncId,
                                               final Inventory playerInventory,
-                                              final SlotReference gridSlotReference,
+                                              final PlayerSlotReference gridSlotReference,
                                               final int sourceUpgradeSlot) {
-        final ItemStack wirelessGrid = gridSlotReference.resolve(playerInventory.player).orElse(ItemStack.EMPTY);
+        final ItemStack wirelessGrid = gridSlotReference.get(playerInventory.player);
         final ItemStack upgradeItem = WirelessGridUpgradeStorage.getUpgrade(wirelessGrid, sourceUpgradeSlot, playerInventory.player).copy();
         return new UpgradeContainerMenu(type, syncId, playerInventory, upgradeItem, gridSlotReference, sourceUpgradeSlot);
     }
@@ -183,7 +183,7 @@ public class UpgradeContainerMenu extends AbstractResourceContainerMenu {
     }
 
     private void addUpgradePlayerSlot(final Inventory inventory, final int id, final int x, final int y) {
-        final boolean disabled = this.disabledSlot != null && this.disabledSlot.isDisabledSlot(id);
+        final boolean disabled = this.disabledSlot != null && this.disabledSlot.isDisabled(id);
         this.addSlot(disabled ? new DisabledSlot(inventory, id, x, y) : new UpgradePlayerSlot(inventory, id, x, y));
     }
 
@@ -210,7 +210,7 @@ public class UpgradeContainerMenu extends AbstractResourceContainerMenu {
     }
 
     public void receiveSelectedInventorySlots(final int[] selectedInventorySlots) {
-        if (!this.inventory.player.level().isClientSide) {
+        if (!this.inventory.player.level().isClientSide()) {
             return;
         }
         final int[] copy = selectedInventorySlots.clone();
@@ -222,7 +222,7 @@ public class UpgradeContainerMenu extends AbstractResourceContainerMenu {
     }
 
     public void updateSelectedInventorySlots(final int[] selectedInventorySlots) {
-        if (this.inventory.player.level().isClientSide || this.upgradeItem.isEmpty() || !this.stillValid(this.inventory.player)) {
+        if (this.inventory.player.level().isClientSide() || this.upgradeItem.isEmpty() || !this.stillValid(this.inventory.player)) {
             return;
         }
         final int[] sanitized = new int[INVENTORY_SLOT_COUNT];
@@ -239,7 +239,7 @@ public class UpgradeContainerMenu extends AbstractResourceContainerMenu {
     }
 
     public void receiveSelectedCurioSlots(final Map<String, Integer> selected) {
-        if (this.inventory.player.level().isClientSide) {
+        if (this.inventory.player.level().isClientSide()) {
             this.selectedCurioSlots = Map.copyOf(selected);
         }
     }
@@ -247,7 +247,7 @@ public class UpgradeContainerMenu extends AbstractResourceContainerMenu {
     public void updateSelectedCurioSlot(final String key, final int filter) {
         final Player player = this.inventory.player;
         final int maxFilter = this.type == UpgradeType.EXPORT ? FILTER_SLOT_COUNT : 1;
-        if (player.level().isClientSide || this.upgradeItem.isEmpty() || !this.stillValid(player)
+        if (player.level().isClientSide() || this.upgradeItem.isEmpty() || !this.stillValid(player)
             || filter < 0 || filter > maxFilter || key.length() > 256) {
             return;
         }
@@ -302,7 +302,7 @@ public class UpgradeContainerMenu extends AbstractResourceContainerMenu {
             return;
         }
         final Player player = this.inventory.player;
-        final ItemStack wirelessGrid = this.gridSource.resolve(player).orElse(ItemStack.EMPTY);
+        final ItemStack wirelessGrid = this.gridSource.get(player);
         if (wirelessGrid.isEmpty()) {
             return;
         }
@@ -320,8 +320,8 @@ public class UpgradeContainerMenu extends AbstractResourceContainerMenu {
             player.closeContainer();
             return;
         }
-        final ItemStack wirelessGrid = this.gridSource.resolve(player).orElse(ItemStack.EMPTY);
-        if (wirelessGrid.getItem() instanceof SlotReferenceHandlerItem handler) {
+        final ItemStack wirelessGrid = this.gridSource.get(player);
+        if (wirelessGrid.getItem() instanceof UsablePlayerSlotReferencedItem handler) {
             handler.use(player, wirelessGrid, this.gridSource);
         } else {
             player.closeContainer();
@@ -330,13 +330,13 @@ public class UpgradeContainerMenu extends AbstractResourceContainerMenu {
 
     @Override
     public boolean stillValid(final Player player) {
-        if (player.level().isClientSide) {
+        if (player.level().isClientSide()) {
             return true;
         }
         if (this.gridSource == null || this.sourceUpgradeSlot < 0 || this.upgradeItem.isEmpty()) {
             return false;
         }
-        final ItemStack wirelessGrid = this.gridSource.resolve(player).orElse(ItemStack.EMPTY);
+        final ItemStack wirelessGrid = this.gridSource.get(player);
         return WirelessGridUpgradeStorage.getUpgrade(wirelessGrid, this.sourceUpgradeSlot, player).is(this.getExpectedUpgrade());
     }
 

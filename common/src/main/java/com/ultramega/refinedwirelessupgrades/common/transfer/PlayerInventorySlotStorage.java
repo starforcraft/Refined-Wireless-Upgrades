@@ -9,7 +9,6 @@ import com.refinedmods.refinedstorage.common.support.resource.ItemResource;
 
 import java.util.Collection;
 import java.util.List;
-import javax.annotation.Nullable;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -17,6 +16,7 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.EnchantmentEffectComponents;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import org.jspecify.annotations.Nullable;
 
 public final class PlayerInventorySlotStorage implements Storage {
     private final ServerPlayer player;

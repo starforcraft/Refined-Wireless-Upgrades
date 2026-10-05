@@ -3,23 +3,23 @@ package com.ultramega.refinedwirelessupgrades.common.mixin;
 import com.ultramega.refinedwirelessupgrades.common.network.SyncUpgradeSlotCountPayload;
 import com.ultramega.refinedwirelessupgrades.common.util.GridSlotReferenceAccessor;
 import com.ultramega.refinedwirelessupgrades.common.util.IGridUpgrade;
+import com.ultramega.refinedwirelessupgrades.common.util.ObservableUpgradeContainer;
 import com.ultramega.refinedwirelessupgrades.common.util.WirelessGridUpgradeLayout;
 import com.ultramega.refinedwirelessupgrades.common.util.WirelessGridUpgradeStorage;
 
 import com.refinedmods.refinedstorage.common.Platform;
-import com.refinedmods.refinedstorage.common.api.support.slotreference.SlotReference;
+import com.refinedmods.refinedstorage.common.api.support.slotreference.PlayerSlotReference;
 import com.refinedmods.refinedstorage.common.grid.AbstractGridContainerMenu;
 import com.refinedmods.refinedstorage.common.support.containermenu.AbstractResourceContainerMenu;
 import com.refinedmods.refinedstorage.common.upgrade.UpgradeContainer;
 import com.refinedmods.refinedstorage.common.upgrade.UpgradeSlot;
-
-import javax.annotation.Nullable;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.ItemStack;
+import org.jspecify.annotations.Nullable;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -52,7 +52,7 @@ public abstract class AbstractGridContainerMenuMixin extends AbstractResourceCon
             return;
         }
 
-        final ItemStack wirelessGrid = this.disabledSlot.resolve(player).orElse(ItemStack.EMPTY);
+        final ItemStack wirelessGrid = this.disabledSlot.get(player);
         if (wirelessGrid.isEmpty()) {
             return;
         }
@@ -73,8 +73,17 @@ public abstract class AbstractGridContainerMenuMixin extends AbstractResourceCon
 
     @Unique
     private UpgradeContainer wirelessUpgrades$createContainer(final ItemStack wirelessGrid, final Player player) {
-        final UpgradeContainer container = WirelessGridUpgradeStorage.createContainer(wirelessGrid, player, this.wirelessUpgrades$upgradeSlotCount);
-        container.addListener(changed -> WirelessGridUpgradeStorage.save(container, wirelessGrid, player));
+        final ObservableUpgradeContainer container = WirelessGridUpgradeStorage.createContainer(wirelessGrid, player, this.wirelessUpgrades$upgradeSlotCount);
+        container.setChangeListener(changed -> {
+            if (this.disabledSlot == null) {
+                return;
+            }
+            final ItemStack currentGrid = this.disabledSlot.get(player);
+            if (currentGrid.is(wirelessGrid.getItem())) {
+                WirelessGridUpgradeStorage.save(container, currentGrid, player);
+                this.disabledSlot.set(player, currentGrid);
+            }
+        });
         return container;
     }
 
@@ -85,7 +94,7 @@ public abstract class AbstractGridContainerMenuMixin extends AbstractResourceCon
 
     @Override
     @Nullable
-    public SlotReference wirelessUpgrades$getGridSlotReference() {
+    public PlayerSlotReference wirelessUpgrades$getGridSlotReference() {
         return this.disabledSlot;
     }
 }

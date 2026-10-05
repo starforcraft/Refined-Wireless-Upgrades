@@ -56,7 +56,7 @@ import com.ultramega.refinedwirelessupgrades.common.api.client.WirelessGridSideB
 
 WirelessGridSideButtonRegistry.register(
     MY_UPGRADE.get(),
-    ResourceLocation.fromNamespaceAndPath("myaddon", "my_upgrade"),
+    Identifier.fromNamespaceAndPath("myaddon", "my_upgrade"),
     Component.translatable("gui.myaddon.my_upgrade"),
     context -> {
         // Handle the click, for example by sending a packet that opens your config screen.

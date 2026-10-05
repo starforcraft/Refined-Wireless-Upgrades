@@ -7,7 +7,7 @@ import com.refinedmods.refinedstorage.common.support.amount.IntegerAmountOperati
 import java.util.function.IntConsumer;
 
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -20,7 +20,7 @@ import static com.ultramega.refinedwirelessupgrades.common.menu.UpgradeConfigura
 import static com.ultramega.refinedwirelessupgrades.common.util.InsertExportIdentifierUtil.createInsertExportTranslation;
 
 public class BlockPickerAmountScreen extends AbstractAmountScreen<BlockPickerAmountScreen.DummyContainerMenu, Integer> {
-    private static final ResourceLocation TEXTURE = createIdentifier("textures/gui/priority.png");
+    private static final Identifier TEXTURE = createIdentifier("textures/gui/priority.png");
 
     private final IntConsumer amountChanged;
 
@@ -43,11 +43,9 @@ public class BlockPickerAmountScreen extends AbstractAmountScreen<BlockPickerAmo
                 .withMaxAmount(MAX_BLOCK_PICKER_AMOUNT)
                 .withResetAmount(DEFAULT_BLOCK_PICKER_AMOUNT)
                 .build(),
-            IntegerAmountOperations.INSTANCE
+            IntegerAmountOperations.INSTANCE, 172, 92
         );
         this.amountChanged = amountChanged;
-        this.imageWidth = 172;
-        this.imageHeight = 92;
     }
 
     @Override
@@ -57,7 +55,7 @@ public class BlockPickerAmountScreen extends AbstractAmountScreen<BlockPickerAmo
     }
 
     @Override
-    protected ResourceLocation getTexture() {
+    protected Identifier getTexture() {
         return TEXTURE;
     }
 

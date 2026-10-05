@@ -6,8 +6,8 @@ import com.ultramega.refinedwirelessupgrades.common.util.WirelessGridUpgradeStor
 
 import com.refinedmods.refinedstorage.api.resource.filter.FilterMode;
 import com.refinedmods.refinedstorage.common.api.support.resource.ResourceContainer;
-import com.refinedmods.refinedstorage.common.api.support.slotreference.SlotReference;
-import com.refinedmods.refinedstorage.common.api.support.slotreference.SlotReferenceHandlerItem;
+import com.refinedmods.refinedstorage.common.api.support.slotreference.PlayerSlotReference;
+import com.refinedmods.refinedstorage.common.api.support.slotreference.UsablePlayerSlotReferencedItem;
 import com.refinedmods.refinedstorage.common.support.containermenu.AbstractResourceContainerMenu;
 import com.refinedmods.refinedstorage.common.support.containermenu.ClientProperty;
 import com.refinedmods.refinedstorage.common.support.containermenu.PropertyType;
@@ -17,12 +17,11 @@ import com.refinedmods.refinedstorage.common.support.containermenu.ResourceSlotT
 import com.refinedmods.refinedstorage.common.support.containermenu.ServerProperty;
 import com.refinedmods.refinedstorage.common.support.packet.s2c.S2CPackets;
 
-import javax.annotation.Nullable;
-
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import org.jspecify.annotations.Nullable;
 
 import static com.ultramega.refinedwirelessupgrades.common.util.InsertExportIdentifierUtil.createInsertExportIdentifier;
 import static com.ultramega.refinedwirelessupgrades.common.util.InsertExportIdentifierUtil.createInsertExportTranslation;
@@ -37,7 +36,7 @@ public final class MagnetContainerMenu extends AbstractResourceContainerMenu {
 
     private final Inventory inventory;
     @Nullable
-    private final SlotReference gridSource;
+    private final PlayerSlotReference gridSource;
     private final int sourceUpgradeSlot;
     private final ItemStack sourceGrid;
     private final ItemStack upgrade;
@@ -52,11 +51,11 @@ public final class MagnetContainerMenu extends AbstractResourceContainerMenu {
         this.registerProperty(new ClientProperty<>(TO_NETWORK, false));
     }
 
-    private MagnetContainerMenu(final int syncId, final Inventory inventory, final SlotReference gridSource, final int sourceUpgradeSlot) {
-        this(syncId, inventory, gridSource, sourceUpgradeSlot, gridSource.resolve(inventory.player).orElse(ItemStack.EMPTY));
+    private MagnetContainerMenu(final int syncId, final Inventory inventory, final PlayerSlotReference gridSource, final int sourceUpgradeSlot) {
+        this(syncId, inventory, gridSource, sourceUpgradeSlot, gridSource.get(inventory.player));
 
-        MagnetConfiguration.loadFilter(this.upgrade, this.pickup, true, inventory.player.registryAccess());
-        MagnetConfiguration.loadFilter(this.upgrade, this.insert, false, inventory.player.registryAccess());
+        MagnetConfiguration.loadFilter(this.upgrade, this.pickup, true);
+        MagnetConfiguration.loadFilter(this.upgrade, this.insert, false);
         this.pickup.setListener(() -> this.saveFilter(this.pickup, true));
         this.insert.setListener(() -> this.saveFilter(this.insert, false));
 
@@ -82,7 +81,7 @@ public final class MagnetContainerMenu extends AbstractResourceContainerMenu {
 
     private MagnetContainerMenu(final int syncId,
                                 final Inventory inventory,
-                                @Nullable final SlotReference gridSource,
+                                @Nullable final PlayerSlotReference gridSource,
                                 final int sourceUpgradeSlot,
                                 final ItemStack sourceGrid) {
         super(MenuTypes.INSTANCE.getMagnetUpgrade(), syncId, inventory.player);
@@ -102,7 +101,7 @@ public final class MagnetContainerMenu extends AbstractResourceContainerMenu {
         return new MagnetContainerMenu(syncId, inventory);
     }
 
-    public static MagnetContainerMenu server(final int syncId, final Inventory inventory, final SlotReference gridSource, final int sourceUpgradeSlot) {
+    public static MagnetContainerMenu server(final int syncId, final Inventory inventory, final PlayerSlotReference gridSource, final int sourceUpgradeSlot) {
         return new MagnetContainerMenu(syncId, inventory, gridSource, sourceUpgradeSlot);
     }
 
@@ -123,15 +122,15 @@ public final class MagnetContainerMenu extends AbstractResourceContainerMenu {
         if (!this.stillValid(this.inventory.player)) {
             return;
         }
-        MagnetConfiguration.saveFilter(this.upgrade, filter, pickupFilter, this.inventory.player.registryAccess());
+        MagnetConfiguration.saveFilter(this.upgrade, filter, pickupFilter);
         this.persist();
     }
 
     private void persist() {
-        if (!this.stillValid(this.inventory.player)) {
+        if (!this.stillValid(this.inventory.player) || this.gridSource == null) {
             return;
         }
-        WirelessGridUpgradeStorage.setUpgrade(this.sourceGrid, this.sourceUpgradeSlot, this.upgrade, this.inventory.player);
+        WirelessGridUpgradeStorage.setUpgrade(this.gridSource.get(this.inventory.player), this.sourceUpgradeSlot, this.upgrade, this.inventory.player);
         this.lastSavedUpgrade = this.upgrade.copy();
         this.inventory.setChanged();
     }
@@ -148,8 +147,9 @@ public final class MagnetContainerMenu extends AbstractResourceContainerMenu {
     }
 
     public void returnToGrid(final ServerPlayer player) {
-        if (this.gridSource != null && this.stillValid(player) && this.sourceGrid.getItem() instanceof SlotReferenceHandlerItem handler) {
-            handler.use(player, this.sourceGrid, this.gridSource);
+        if (this.gridSource != null && this.stillValid(player)
+            && this.gridSource.get(player).getItem() instanceof UsablePlayerSlotReferencedItem handler) {
+            handler.use(player, this.gridSource.get(player), this.gridSource);
         } else {
             player.closeContainer();
         }
@@ -157,14 +157,14 @@ public final class MagnetContainerMenu extends AbstractResourceContainerMenu {
 
     @Override
     public boolean stillValid(final Player player) {
-        if (player.level().isClientSide) {
+        if (player.level().isClientSide()) {
             return true;
         }
         if (this.gridSource == null || this.sourceUpgradeSlot < 0 || !this.upgrade.is(Items.INSTANCE.getMagnetUpgrade())
-            || this.gridSource.resolve(player).orElse(ItemStack.EMPTY) != this.sourceGrid) {
+            || !this.gridSource.get(player).is(this.sourceGrid.getItem())) {
             return false;
         }
-        final ItemStack installed = WirelessGridUpgradeStorage.getUpgrade(this.sourceGrid, this.sourceUpgradeSlot, player);
+        final ItemStack installed = WirelessGridUpgradeStorage.getUpgrade(this.gridSource.get(player), this.sourceUpgradeSlot, player);
         return ItemStack.matches(installed, this.lastSavedUpgrade);
     }
 }

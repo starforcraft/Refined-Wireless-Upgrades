@@ -15,14 +15,14 @@ import com.refinedmods.refinedstorage.common.api.RefinedStorageApi;
 import com.refinedmods.refinedstorage.common.api.security.SecurityHelper;
 import com.refinedmods.refinedstorage.common.api.storage.PlayerActor;
 import com.refinedmods.refinedstorage.common.api.support.network.item.NetworkItemContext;
-import com.refinedmods.refinedstorage.common.api.support.slotreference.SlotReference;
+import com.refinedmods.refinedstorage.common.api.support.slotreference.PlayerSlotReference;
 import com.refinedmods.refinedstorage.common.security.BuiltinPermission;
 
 import java.util.Optional;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.network.protocol.game.ClientboundSetCarriedItemPacket;
+import net.minecraft.network.protocol.game.ClientboundSetHeldSlotPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
@@ -42,7 +42,7 @@ public final class BlockPickerUpgradeHandler {
                               final Direction direction) {
         if (player.gameMode.getGameModeForPlayer() != GameType.SURVIVAL
             || !player.level().isLoaded(blockPos)
-            || !player.canInteractWithBlock(blockPos, 1.0)) {
+            || !player.isWithinBlockInteractionRange(blockPos, 1.0)) {
             return;
         }
 
@@ -68,11 +68,11 @@ public final class BlockPickerUpgradeHandler {
 
         final ResourceKey resource = configuredResource.get().resource();
         final Actor actor = new PlayerActor(player);
-        for (final SlotReference reference : WirelessGridUpgradeStorage.find(player)) {
-            final ItemStack wirelessGrid = reference.resolve(player).orElse(ItemStack.EMPTY);
+        for (final PlayerSlotReference reference : WirelessGridUpgradeStorage.find(player)) {
+            final ItemStack wirelessGrid = reference.get(player);
             if (tryExtract(player, wirelessGrid, reference, destinationSlot, resource, actor)) {
                 inventory.pickSlot(destinationSlot);
-                player.connection.send(new ClientboundSetCarriedItemPacket(inventory.selected));
+                player.connection.send(new ClientboundSetHeldSlotPacket(inventory.getSelectedSlot()));
                 player.inventoryMenu.broadcastChanges();
                 return;
             }
@@ -81,7 +81,7 @@ public final class BlockPickerUpgradeHandler {
 
     private static boolean tryExtract(final ServerPlayer player,
                                       final ItemStack wirelessGrid,
-                                      final SlotReference slotReference,
+                                      final PlayerSlotReference slotReference,
                                       final int destinationSlot,
                                       final ResourceKey resource,
                                       final Actor actor) {

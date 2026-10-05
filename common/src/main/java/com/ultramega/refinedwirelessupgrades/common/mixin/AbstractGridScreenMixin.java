@@ -19,15 +19,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.renderer.Rect2i;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.Item;
-import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -38,18 +37,12 @@ import static com.ultramega.refinedwirelessupgrades.common.util.InsertExportIden
 @Mixin(AbstractGridScreen.class)
 public abstract class AbstractGridScreenMixin<T extends AbstractGridContainerMenu> extends AbstractStretchingScreen<T> implements UpgradeSlotsExtraAreaProvider {
     @Unique
-    private static final ResourceLocation UPGRADE_SLOTS = createInsertExportIdentifier("textures/gui/sprites/upgrade_slots.png");
-
+    private static final Identifier UPGRADE_SLOTS = createInsertExportIdentifier("textures/gui/sprites/upgrade_slots.png");
     @Unique
     private static final int UPGRADE_SLOTS_TEXTURE_HEIGHT = 46;
 
-    @Shadow
-    @Final
-    private Inventory playerInventory;
-
     @Unique
     private final Map<Item, AbstractSideButtonWidget> wirelessUpgrades$sideButtons = new HashMap<>();
-
     @Unique
     private final List<Rect2i> wirelessUpgrades$sideButtonExclusionZones = new ArrayList<>();
 
@@ -59,11 +52,11 @@ public abstract class AbstractGridScreenMixin<T extends AbstractGridContainerMen
     protected AbstractGridScreenMixin(final T menu,
                                       final Inventory playerInventory,
                                       final TextMarquee title) {
-        super(menu, playerInventory, title);
+        super(menu, playerInventory, title, 176, 222);
     }
 
     @Inject(method = "renderStretchingBackground", at = @At("TAIL"))
-    private void renderStretchingBackground(final GuiGraphics graphics,
+    private void renderStretchingBackground(final GuiGraphicsExtractor graphics,
                                             final int x,
                                             final int y,
                                             final int rows,
@@ -95,8 +88,8 @@ public abstract class AbstractGridScreenMixin<T extends AbstractGridContainerMen
     }
 
     @Unique
-    private void wirelessUpgrades$blitUpgradeStrip(final GuiGraphics graphics, final int x, final int y, final int sourceY, final int height) {
-        graphics.blit(UPGRADE_SLOTS, x, y, 0, sourceY, WirelessGridUpgradeLayout.COLUMN_WIDTH, height,
+    private void wirelessUpgrades$blitUpgradeStrip(final GuiGraphicsExtractor graphics, final int x, final int y, final int sourceY, final int height) {
+        graphics.blit(RenderPipelines.GUI_TEXTURED, UPGRADE_SLOTS, x, y, 0, sourceY, WirelessGridUpgradeLayout.COLUMN_WIDTH, height,
             WirelessGridUpgradeLayout.COLUMN_WIDTH, UPGRADE_SLOTS_TEXTURE_HEIGHT);
     }
 
@@ -124,8 +117,13 @@ public abstract class AbstractGridScreenMixin<T extends AbstractGridContainerMen
         if (!(this.getMenu() instanceof IGridUpgrade)) {
             return;
         }
+        final var player = this.minecraft.player;
+        if (player == null) {
+            return;
+        }
+        final Inventory inventory = player.getInventory();
         for (final WirelessGridSideButtonRegistry.Entry entry : WirelessGridSideButtonRegistry.getEntries()) {
-            final WirelessGridSideButtonContext context = new WirelessGridSideButtonContext((AbstractGridScreen<?>) (Object) this, this.playerInventory, entry.upgrade());
+            final WirelessGridSideButtonContext context = new WirelessGridSideButtonContext((AbstractGridScreen<?>) (Object) this, inventory, entry.upgrade());
             final AbstractSideButtonWidget existing = this.wirelessUpgrades$sideButtons.get(entry.upgrade());
             if (context.getUpgradeSlot() >= 0 && existing == null) {
                 final AbstractSideButtonWidget button = entry.create(context);
@@ -170,7 +168,7 @@ public abstract class AbstractGridScreenMixin<T extends AbstractGridContainerMen
     }
 
     @Override
-    protected boolean hasClickedOutside(final double mouseX, final double mouseY, final int left, final int top, final int button) {
+    protected boolean hasClickedOutside(final double mouseX, final double mouseY, final int left, final int top) {
         // The upgrade panel is outside the vanilla screen bounds
         // Fabric also checks these bounds on mouse release, which otherwise drops the picked-up upgrade
         for (final Rect2i area : this.wirelessUpgrades$getUpgradeSlotsExtraAreas()) {
@@ -179,7 +177,7 @@ public abstract class AbstractGridScreenMixin<T extends AbstractGridContainerMen
                 return false;
             }
         }
-        return super.hasClickedOutside(mouseX, mouseY, left, top, button);
+        return super.hasClickedOutside(mouseX, mouseY, left, top);
     }
 
     @Unique

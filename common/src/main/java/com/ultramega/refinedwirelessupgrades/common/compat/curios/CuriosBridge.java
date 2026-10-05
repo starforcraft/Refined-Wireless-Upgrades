@@ -7,7 +7,7 @@ import com.refinedmods.refinedstorage.api.storage.Storage;
 import java.util.List;
 import java.util.function.Function;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
@@ -31,7 +31,7 @@ public final class CuriosBridge {
         return provider.apply(player);
     }
 
-    public record Slot(String identifier, int index, ItemStack stack, ResourceLocation icon, Storage storage, ItemStackAccess contentsAccess) {
+    public record Slot(String identifier, int index, ItemStack stack, Identifier icon, Storage storage, ItemStackAccess contentsAccess) {
         public String key() {
             return this.identifier + "/" + this.index;
         }

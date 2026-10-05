@@ -22,10 +22,11 @@ import com.refinedmods.refinedstorage.common.content.RegistryCallback;
 
 import java.util.function.Supplier;
 
+import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.MenuType;
@@ -59,11 +60,14 @@ public class ModInitializer extends AbstractModInitializer {
         modContainer.registerConfig(ModConfig.Type.SERVER, serverConfig.getSpec());
         Platform.setServerConfigProvider(() -> serverConfig);
 
-        if (FMLEnvironment.dist == Dist.CLIENT) {
+        if (FMLEnvironment.getDist() == Dist.CLIENT) {
             eventBus.addListener(ClientModInitializer::onRegisterMenuScreens);
         }
         eventBus.addListener(this::onCommonSetup);
         eventBus.addListener(this::registerPayloads);
+        final DeferredRegister<DataComponentType<?>> components = DeferredRegister.create(BuiltInRegistries.DATA_COMPONENT_TYPE, MOD_ID);
+        this.registerDataComponents(new ForgeRegistryCallback<>(components));
+        components.register(eventBus);
         this.registerItems(eventBus);
         this.registerMenus(eventBus);
         eventBus.addListener(this::registerCreativeModeTabListener);
@@ -158,7 +162,7 @@ public class ModInitializer extends AbstractModInitializer {
 
     private record ForgeRegistryCallback<T>(DeferredRegister<T> registry) implements RegistryCallback<T> {
         @Override
-        public <R extends T> Supplier<R> register(final ResourceLocation id, final Supplier<R> value) {
+        public <R extends T> Supplier<R> register(final Identifier id, final Supplier<R> value) {
             return this.registry.register(id.getPath(), value);
         }
     }

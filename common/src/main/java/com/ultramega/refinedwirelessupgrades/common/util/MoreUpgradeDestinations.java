@@ -7,13 +7,13 @@ import com.refinedmods.refinedstorage.common.content.ContentNames;
 import com.refinedmods.refinedstorage.common.content.DataComponents;
 
 import java.util.function.Supplier;
-import javax.annotation.Nullable;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import org.jspecify.annotations.Nullable;
 
 public enum MoreUpgradeDestinations implements UpgradeDestination { //TODO: separate into all variants?
     WIRELESS_GRIDS(ContentNames.WIRELESS_GRID, MoreUpgradeDestinations::createBoundCreativeWirelessGrid),

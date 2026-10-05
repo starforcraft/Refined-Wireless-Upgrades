@@ -18,29 +18,31 @@ import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import javax.annotation.Nullable;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.Rect2i;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import org.jspecify.annotations.Nullable;
 
 import static com.ultramega.refinedwirelessupgrades.common.util.InsertExportIdentifierUtil.createInsertExportIdentifier;
 import static com.ultramega.refinedwirelessupgrades.common.util.InsertExportIdentifierUtil.createInsertExportTranslation;
 
 public class UpgradeScreen extends AbstractBaseScreen<UpgradeContainerMenu> {
-    private static final ResourceLocation BACKGROUND = createInsertExportIdentifier("textures/gui/upgrade.png");
-    private static final ResourceLocation CHECKMARK = createInsertExportIdentifier("textures/gui/checkmark.png");
-    private static final ResourceLocation XMARK = createInsertExportIdentifier("textures/gui/xmark.png");
-    private static final ResourceLocation MASS_SELECT = createInsertExportIdentifier("textures/gui/mass_select.png");
+    private static final Identifier BACKGROUND = createInsertExportIdentifier("textures/gui/upgrade.png");
+    private static final Identifier CHECKMARK = createInsertExportIdentifier("textures/gui/checkmark.png");
+    private static final Identifier XMARK = createInsertExportIdentifier("textures/gui/xmark.png");
+    private static final Identifier MASS_SELECT = createInsertExportIdentifier("textures/gui/mass_select.png");
 
     private static final int BASE_BACKGROUND_WIDTH = 191;
     private static final int BACKGROUND_WIDTH_WITH_EXTRA_SLOTS = 225;
@@ -66,13 +68,11 @@ public class UpgradeScreen extends AbstractBaseScreen<UpgradeContainerMenu> {
                          final UpgradeContainerMenu menu,
                          final Inventory playerInventory,
                          final Component title) {
-        super(menu, playerInventory, title);
+        super(menu, playerInventory, title, type == UpgradeType.EXPORT ? BACKGROUND_WIDTH_WITH_EXTRA_SLOTS : BASE_BACKGROUND_WIDTH, 163);
         this.type = type;
         this.curiosPanel = CuriosBridge.isLoaded() ? new CuriosSlotPanel(menu, type) : null;
         this.selectedInventorySlots = new int[UpgradeContainerMenu.INVENTORY_SLOT_COUNT];
         menu.setSelectedInventorySlotsListener(this::setSelectedInventorySlots);
-        this.imageWidth = type == UpgradeType.EXPORT ? BACKGROUND_WIDTH_WITH_EXTRA_SLOTS : BASE_BACKGROUND_WIDTH;
-        this.imageHeight = 163;
         this.titleLabelX = 23;
         this.inventoryLabelX = 23;
         this.inventoryLabelY = 69;
@@ -99,7 +99,7 @@ public class UpgradeScreen extends AbstractBaseScreen<UpgradeContainerMenu> {
     }
 
     @Override
-    protected ResourceLocation getTexture() {
+    protected Identifier getTexture() {
         return BACKGROUND;
     }
 
@@ -109,12 +109,13 @@ public class UpgradeScreen extends AbstractBaseScreen<UpgradeContainerMenu> {
     }
 
     @Override
-    protected void renderBg(final GuiGraphics graphics,
-                            final float delta,
-                            final int mouseX,
-                            final int mouseY) {
-        graphics.blit(BACKGROUND, this.leftPos, this.topPos, 0, 0, this.imageWidth, this.imageHeight);
-        this.renderResourceSlots(graphics);
+    protected void extractDefaultBackground(final GuiGraphicsExtractor graphics) {
+        graphics.blit(RenderPipelines.GUI_TEXTURED, BACKGROUND, this.leftPos, this.topPos, 0, 0, this.imageWidth, this.imageHeight, 256, 256);
+    }
+
+    @Override
+    public void extractContents(final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY, final float delta) {
+        super.extractContents(graphics, mouseX, mouseY, delta);
 
         for (final Slot slot : this.getMenu().slots) {
             if (slot instanceof ResourceSlot) {
@@ -141,61 +142,56 @@ public class UpgradeScreen extends AbstractBaseScreen<UpgradeContainerMenu> {
             }
         }
 
-        renderMassSelect(graphics, this.leftPos + MASS_SELECT_X, this.topPos + MASS_SELECT_INVENTORY_Y);
         if (this.curiosPanel != null) {
             this.curiosPanel.render(graphics, this.font, this.leftPos, this.topPos + 67, mouseX, mouseY);
-        }
-    }
-
-    @Override
-    public void render(final GuiGraphics graphics, final int mouseX, final int mouseY, final float delta) {
-        super.render(graphics, mouseX, mouseY, delta);
-        if (this.curiosPanel != null) {
             this.curiosPanel.renderTooltip(graphics, this.font, mouseX, mouseY);
         }
+
+        renderMassSelect(graphics, this.leftPos + MASS_SELECT_X, this.topPos + MASS_SELECT_INVENTORY_Y);
     }
 
-    public static void renderSlotHighlight(final GuiGraphics graphics,
+    public static void renderSlotHighlight(final GuiGraphicsExtractor graphics,
                                            final UpgradeType type,
                                            final Font font,
                                            final int x,
                                            final int y,
                                            final boolean checked,
                                            final int filterIndex) {
-        graphics.pose().pushPose();
-        graphics.pose().translate(0, 0, 300.0F);
+        graphics.pose().pushMatrix();
 
         if (checked) {
             if (type == UpgradeType.INSERT) {
-                graphics.blit(CHECKMARK, x, y, 0, 0, 16, 16, 16, 16);
+                graphics.blit(RenderPipelines.GUI_TEXTURED, CHECKMARK, x, y, 0, 0, 16, 16, 16, 16);
             } else {
-                graphics.pose().pushPose();
-                graphics.pose().scale(0.5F, 0.5F, 1.0F);
+                graphics.pose().pushMatrix();
+                graphics.pose().scale(0.5F, 0.5F);
 
                 final String text = String.valueOf(filterIndex);
-                graphics.drawString(font, text, (x + 16) * 2 - font.width(text), y * 2, Color.GREEN.hashCode());
+                graphics.text(font, text, (x + 16) * 2 - font.width(text), y * 2, Color.GREEN.hashCode());
 
-                graphics.pose().popPose();
+                graphics.pose().popMatrix();
             }
         } else {
-            graphics.blit(XMARK, x, y, 0, 0, 16, 16, 16, 16);
+            graphics.blit(RenderPipelines.GUI_TEXTURED, XMARK, x, y, 0, 0, 16, 16, 16, 16);
         }
 
-        graphics.pose().popPose();
+        graphics.pose().popMatrix();
     }
 
-    public static void renderMassSelect(final GuiGraphics graphics, final int x, final int y) {
-        graphics.pose().pushPose();
-        graphics.pose().translate(0, 0, 300.0F);
+    public static void renderMassSelect(final GuiGraphicsExtractor graphics, final int x, final int y) {
+        graphics.pose().pushMatrix();
 
-        graphics.blit(MASS_SELECT, x, y, 0, 0, 16, 16, 16, 16);
-        graphics.blit(MASS_SELECT, x, y + (16 * 3) + 10, 0, 0, 16, 16, 16, 16);
+        graphics.blit(RenderPipelines.GUI_TEXTURED, MASS_SELECT, x, y, 0, 0, 16, 16, 16, 16);
+        graphics.blit(RenderPipelines.GUI_TEXTURED, MASS_SELECT, x, y + (16 * 3) + 10, 0, 0, 16, 16, 16, 16);
 
-        graphics.pose().popPose();
+        graphics.pose().popMatrix();
     }
 
     @Override
-    public boolean mouseClicked(final double mouseX, final double mouseY, final int button) {
+    public boolean mouseClicked(final MouseButtonEvent event, final boolean doubleClick) {
+        final double mouseX = event.x();
+        final double mouseY = event.y();
+        final int button = event.button();
         final ItemStack carried = this.draggingItem.isEmpty() ? this.menu.getCarried() : this.draggingItem;
         if (this.curiosPanel != null && this.curiosPanel.contains(mouseX, mouseY)) {
             this.clickedCuriosPanel = true;
@@ -205,11 +201,11 @@ public class UpgradeScreen extends AbstractBaseScreen<UpgradeContainerMenu> {
             return true;
         }
         if (carried.isEmpty()) {
-            final Slot slot = this.findSlot(mouseX, mouseY);
+            final Slot slot = this.getHoveredSlot(mouseX, mouseY);
             if (slot instanceof UpgradePlayerSlot) {
                 // Let vanilla handle shift-clicks normally
-                if (hasShiftDown() && !slot.getItem().isEmpty()) {
-                    return super.mouseClicked(mouseX, mouseY, button);
+                if (event.hasShiftDown() && !slot.getItem().isEmpty()) {
+                    return super.mouseClicked(event, doubleClick);
                 }
 
                 this.cancel = false;
@@ -220,15 +216,12 @@ public class UpgradeScreen extends AbstractBaseScreen<UpgradeContainerMenu> {
             }
         }
 
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(event, doubleClick);
     }
 
     @Override
-    public boolean mouseDragged(final double mouseX,
-                                final double mouseY,
-                                final int button,
-                                final double dragX,
-                                final double dragY) {
+    public boolean mouseDragged(final MouseButtonEvent event, final double dragX, final double dragY) {
+        final int button = event.button();
         if (this.clickedCuriosPanel) {
             return true;
         }
@@ -243,25 +236,26 @@ public class UpgradeScreen extends AbstractBaseScreen<UpgradeContainerMenu> {
         }
 
         if (this.clickedSlotId != -1 && !this.pickedUpDraggedStack) {
-            this.slotClicked(this.menu.slots.get(this.clickedSlotId), this.clickedSlotId, button, ClickType.PICKUP);
+            this.slotClicked(this.menu.slots.get(this.clickedSlotId), this.clickedSlotId, button, ContainerInput.PICKUP);
             this.pickedUpDraggedStack = true;
             this.suppressReleaseAfterDrag = true;
             this.clearDraggingState();
             return true;
         }
 
-        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+        return super.mouseDragged(event, dragX, dragY);
     }
 
     @Override
-    public boolean mouseReleased(final double mouseX, final double mouseY, final int button) {
+    public boolean mouseReleased(final MouseButtonEvent event) {
+        final int button = event.button();
         if (this.clickedCuriosPanel) {
             this.clickedCuriosPanel = false;
             return true;
         }
         boolean handled = false;
 
-        final Slot slot = this.findSlot(mouseX, mouseY);
+        final Slot slot = this.getHoveredSlot(event.x(), event.y());
         final boolean suppressThisRelease = this.suppressReleaseAfterDrag || this.pickedUpDraggedStack || this.blockedQuickCraftDrag;
         if (!suppressThisRelease && !this.cancel && !this.dragging && slot instanceof UpgradePlayerSlot && slot.index == this.clickedSlotId) {
             if (this.draggingItem.isEmpty()) {
@@ -299,8 +293,8 @@ public class UpgradeScreen extends AbstractBaseScreen<UpgradeContainerMenu> {
         }
 
         // Check mass select buttons
-        final boolean clickedInv = this.isHovering(MASS_SELECT_X + 1, MASS_SELECT_INVENTORY_Y + 1, 4, 5, mouseX, mouseY);
-        final boolean clickedHotbar = this.isHovering(MASS_SELECT_X + 1, MASS_SELECT_HOTBAR_Y + 1, 4, 5, mouseX, mouseY);
+        final boolean clickedInv = this.isHovering(MASS_SELECT_X + 1, MASS_SELECT_INVENTORY_Y + 1, 4, 5, event.x(), event.y());
+        final boolean clickedHotbar = this.isHovering(MASS_SELECT_X + 1, MASS_SELECT_HOTBAR_Y + 1, 4, 5, event.x(), event.y());
 
         if (clickedInv || clickedHotbar) {
             final int start = clickedHotbar ? 0 : 9;
@@ -320,7 +314,7 @@ public class UpgradeScreen extends AbstractBaseScreen<UpgradeContainerMenu> {
             handled = true;
         }
 
-        return handled || super.mouseReleased(mouseX, mouseY, button);
+        return handled || super.mouseReleased(event);
     }
 
     @Override

@@ -2,15 +2,9 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "R": {
-      "item": "minecraft:redstone_block"
-    },
-    "S": {
-      "item": "refinedstorage:speed_upgrade"
-    },
-    "T": {
-      "item": "refinedstorage:stack_upgrade"
-    }
+    "R": "minecraft:redstone_block",
+    "S": "refinedstorage:speed_upgrade",
+    "T": "refinedstorage:stack_upgrade"
   },
   "pattern": [
     "RSR",
@@ -18,7 +12,6 @@
     "RSR"
   ],
   "result": {
-    "count": 1,
     "id": "rsinsertexportupgrade:insert_upgrade"
   }
 }

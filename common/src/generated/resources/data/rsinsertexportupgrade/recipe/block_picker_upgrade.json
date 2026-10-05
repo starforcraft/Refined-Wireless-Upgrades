@@ -2,15 +2,9 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "R": {
-      "item": "refinedstorage:quartz_enriched_copper"
-    },
-    "S": {
-      "item": "refinedstorage:speed_upgrade"
-    },
-    "T": {
-      "item": "refinedstorage:stack_upgrade"
-    }
+    "R": "refinedstorage:quartz_enriched_copper",
+    "S": "refinedstorage:speed_upgrade",
+    "T": "refinedstorage:stack_upgrade"
   },
   "pattern": [
     "RSR",
@@ -18,7 +12,6 @@
     "RSR"
   ],
   "result": {
-    "count": 1,
     "id": "rsinsertexportupgrade:block_picker_upgrade"
   }
 }

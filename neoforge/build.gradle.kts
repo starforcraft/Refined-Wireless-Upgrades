@@ -50,16 +50,14 @@ val refinedstorageVersion: String by project
 val refinedstorageQuartzArsenalVersion: String by project
 val jeiVersion: String by project
 val curiosVersion: String by project
-val mekanismVersion: String by project
-val grandpowerVersion: String by project
+//val mekanismVersion: String by project
 
 val commonJava by configurations.existing
 val commonResources by configurations.existing
 
 dependencies {
     api(libs.apiguardian)
-    compileOnly("mekanism:Mekanism:${minecraftVersion}-${mekanismVersion}:api")
-    compileOnly("dev.technici4n:GrandPower:${grandpowerVersion}")
+//    compileOnly("mekanism:Mekanism:${minecraftVersion}-${mekanismVersion}:api")
     compileOnly("top.theillusivec4.curios:curios-neoforge:${curiosVersion}:api")
     runtimeOnly("top.theillusivec4.curios:curios-neoforge:${curiosVersion}")
     compileOnly(project(":common"))

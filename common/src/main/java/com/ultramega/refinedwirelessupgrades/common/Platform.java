@@ -1,7 +1,8 @@
 package com.ultramega.refinedwirelessupgrades.common;
 
 import java.util.function.Supplier;
-import javax.annotation.Nullable;
+
+import org.jspecify.annotations.Nullable;
 
 import static java.util.Objects.requireNonNull;
 

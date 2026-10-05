@@ -7,6 +7,8 @@ import com.ultramega.refinedwirelessupgrades.common.compat.curios.CuriosBridge;
 import com.ultramega.refinedwirelessupgrades.common.item.UpgradeItem;
 import com.ultramega.refinedwirelessupgrades.common.menu.UpgradeConfiguration;
 import com.ultramega.refinedwirelessupgrades.common.menu.UpgradeConfiguration.RuntimeConfiguration;
+import com.ultramega.refinedwirelessupgrades.common.registry.ModDataComponents;
+import com.ultramega.refinedwirelessupgrades.common.util.WirelessGridUpgradeState;
 import com.ultramega.refinedwirelessupgrades.common.util.WirelessGridUpgradeStorage;
 
 import com.refinedmods.refinedstorage.api.autocrafting.calculation.CancellationToken;
@@ -27,7 +29,7 @@ import com.refinedmods.refinedstorage.common.api.storage.root.FuzzyRootStorage;
 import com.refinedmods.refinedstorage.common.api.support.network.item.NetworkItemContext;
 import com.refinedmods.refinedstorage.common.api.support.resource.FuzzyModeNormalizer;
 import com.refinedmods.refinedstorage.common.api.support.resource.ResourceContainer;
-import com.refinedmods.refinedstorage.common.api.support.slotreference.SlotReference;
+import com.refinedmods.refinedstorage.common.api.support.slotreference.PlayerSlotReference;
 import com.refinedmods.refinedstorage.common.security.BuiltinPermission;
 import com.refinedmods.refinedstorage.common.support.resource.ItemResource;
 import com.refinedmods.refinedstorage.common.upgrade.UpgradeContainer;
@@ -39,12 +41,10 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.UnaryOperator;
 
-import net.minecraft.core.HolderLookup;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.component.CustomData;
+import org.jspecify.annotations.Nullable;
 
 public final class UpgradeProcessor {
     private static final int AUTOCRAFTING_RETRY_INTERVAL = 20;
@@ -53,14 +53,14 @@ public final class UpgradeProcessor {
     private Map<ItemStack, CachedGrid> currentGrids = new IdentityHashMap<>();
 
     public void tick(final ServerPlayer player) {
-        for (final SlotReference reference : WirelessGridUpgradeStorage.find(player)) {
-            final ItemStack stack = reference.resolve(player).orElse(ItemStack.EMPTY);
+        for (final PlayerSlotReference reference : WirelessGridUpgradeStorage.find(player)) {
+            final ItemStack stack = reference.get(player);
             if (!WirelessGridUpgradeStorage.isSupportedWirelessGrid(stack) || this.currentGrids.containsKey(stack)) {
                 continue;
             }
-            final CustomData data = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY);
+            final WirelessGridUpgradeState data = stack.getOrDefault(ModDataComponents.INSTANCE.getGridUpgrades(), WirelessGridUpgradeState.EMPTY);
             CachedGrid cached = this.previousGrids.get(stack);
-            if (cached == null || cached.data() != data || cached.registries() != player.registryAccess()
+            if (cached == null || cached.data() != data
                 || cached.upgrades().getContainerSize() != WirelessGridUpgradeStorage.getSlotCount(player)
                 || cached.registrationRevision() != WirelessGridUpgradeRegistry.getRevision()) {
                 cached = CachedGrid.create(stack, data, player);
@@ -71,6 +71,9 @@ public final class UpgradeProcessor {
             }
             final NetworkItemContext context = RefinedStorageApi.INSTANCE.getNetworkItemHelper().createContext(stack, player, reference);
             tick(stack, player, reference, context, cached);
+
+            this.currentGrids.remove(stack);
+            this.currentGrids.put(reference.get(player), cached);
         }
 
         this.previousGrids.clear();
@@ -80,7 +83,7 @@ public final class UpgradeProcessor {
     }
 
     private static void tick(final ItemStack wirelessGrid, final ServerPlayer player,
-                             final SlotReference wirelessGridSlot, final NetworkItemContext context,
+                             final PlayerSlotReference wirelessGridSlot, final NetworkItemContext context,
                              final CachedGrid cached) {
         final UpgradeContainer installedUpgrades = cached.upgrades();
         if (!context.isActive()) {
@@ -112,7 +115,7 @@ public final class UpgradeProcessor {
                                                 final UpgradeItem upgradeItem,
                                                 final ServerPlayer player,
                                                 final ItemStack wirelessGrid,
-                                                final SlotReference wirelessGridSlot,
+                                                final PlayerSlotReference wirelessGridSlot,
                                                 final StorageNetworkComponent storage,
                                                 final Actor actor,
                                                 final NetworkItemContext context) {
@@ -125,7 +128,7 @@ public final class UpgradeProcessor {
         boolean inventoryChanged = false;
 
         for (int slot = 0; slot < Math.min(selectedSlots.length, inventory.getContainerSize()); ++slot) {
-            if (selectedSlots[slot] <= 0 || wirelessGridSlot.isDisabledSlot(slot)) {
+            if (selectedSlots[slot] <= 0 || wirelessGridSlot.isDisabled(slot)) {
                 continue;
             }
 
@@ -200,7 +203,7 @@ public final class UpgradeProcessor {
     }
 
     private static boolean processExportUpgrade(final RuntimeConfiguration configuration,
-                                                final ResourceKey[] configuredResources,
+                                                final @Nullable ResourceKey[] configuredResources,
                                                 final UpgradeItem upgradeItem,
                                                 final ServerPlayer player,
                                                 final Network network,
@@ -249,12 +252,14 @@ public final class UpgradeProcessor {
             for (final CuriosBridge.Slot curio : CuriosBridge.getSlots(player)) {
                 if (curio.key().equals(selection.getKey())) {
                     final ResourceKey resource = configuredResources[filterSlot];
-                    final Storage destination = resource instanceof ItemResource ? curio.storage() : new ItemContentsStorage(curio.contentsAccess());
-                    inventoryChanged |= exportToSlot(resource, configuration.fuzzyMode(),
-                        ItemContentsStorage.transferSize(resource, configuration.hasStackUpgrade()),
-                        storage, destination, actor, context, upgradeItem.getEnergyUsage(),
-                        shouldTryAutocrafting, autocraftingRequests);
-                    break;
+                    if (resource != null) {
+                        final Storage destination = resource instanceof ItemResource ? curio.storage() : new ItemContentsStorage(curio.contentsAccess());
+                        inventoryChanged |= exportToSlot(resource, configuration.fuzzyMode(),
+                            ItemContentsStorage.transferSize(resource, configuration.hasStackUpgrade()),
+                            storage, destination, actor, context, upgradeItem.getEnergyUsage(),
+                            shouldTryAutocrafting, autocraftingRequests);
+                        break;
+                    }
                 }
             }
         }
@@ -288,8 +293,8 @@ public final class UpgradeProcessor {
         return false;
     }
 
-    private static ResourceKey[] createConfiguredResources(final ResourceContainer filter) {
-        final ResourceKey[] resources = new ResourceKey[filter.size()];
+    private static @Nullable ResourceKey[] createConfiguredResources(final ResourceContainer filter) {
+        final @Nullable ResourceKey[] resources = new ResourceKey[filter.size()];
         for (int slot = 0; slot < filter.size(); ++slot) {
             resources[slot] = filter.getResource(slot);
         }
@@ -359,9 +364,8 @@ public final class UpgradeProcessor {
         }
     }
 
-    public static WirelessGridUpgradeTicker createInsertTicker(final ItemStack stack,
-                                                               final HolderLookup.Provider registries) {
-        final RuntimeConfiguration configuration = UpgradeConfiguration.getRuntimeConfiguration(stack, registries);
+    public static WirelessGridUpgradeTicker createInsertTicker(final ItemStack stack) {
+        final RuntimeConfiguration configuration = UpgradeConfiguration.getRuntimeConfiguration(stack);
         if (!configuration.hasSelectedSlots()) {
             return WirelessGridUpgradeTicker.NONE;
         }
@@ -372,9 +376,8 @@ public final class UpgradeProcessor {
             context.network().getComponent(StorageNetworkComponent.class), new PlayerActor(context.player()), context.networkItemContext());
     }
 
-    public static WirelessGridUpgradeTicker createExportTicker(final ItemStack stack,
-                                                               final HolderLookup.Provider registries) {
-        final RuntimeConfiguration configuration = UpgradeConfiguration.getRuntimeConfiguration(stack, registries);
+    public static WirelessGridUpgradeTicker createExportTicker(final ItemStack stack) {
+        final RuntimeConfiguration configuration = UpgradeConfiguration.getRuntimeConfiguration(stack);
         if (!configuration.hasSelectedSlots()) {
             return WirelessGridUpgradeTicker.NONE;
         }
@@ -385,22 +388,21 @@ public final class UpgradeProcessor {
                 context.network().getComponent(StorageNetworkComponent.class), new PlayerActor(context.player()), context.networkItemContext());
     }
 
-    private record CachedGrid(CustomData data,
-                              HolderLookup.Provider registries,
+    private record CachedGrid(WirelessGridUpgradeState data,
                               UpgradeContainer upgrades,
                               WirelessGridUpgradeTicker[] tickers,
                               long registrationRevision,
                               boolean supported) {
-        private static CachedGrid create(final ItemStack stack, final CustomData data, final ServerPlayer player) {
+        private static CachedGrid create(final ItemStack stack, final WirelessGridUpgradeState data, final ServerPlayer player) {
             final long registrationRevision = WirelessGridUpgradeRegistry.getRevision();
             final UpgradeContainer upgrades = WirelessGridUpgradeStorage.createContainer(stack, player);
             final WirelessGridUpgradeTicker[] tickers = new WirelessGridUpgradeTicker[upgrades.getContainerSize()];
             boolean supported = false;
             for (int slot = 0; slot < upgrades.getContainerSize(); ++slot) {
-                tickers[slot] = WirelessGridUpgradeRegistry.createTicker(upgrades.getItem(slot), player.registryAccess());
+                tickers[slot] = WirelessGridUpgradeRegistry.createTicker(upgrades.getItem(slot));
                 supported |= tickers[slot] != WirelessGridUpgradeTicker.NONE;
             }
-            return new CachedGrid(data, player.registryAccess(), upgrades, tickers, registrationRevision, supported);
+            return new CachedGrid(data, upgrades, tickers, registrationRevision, supported);
         }
     }
 

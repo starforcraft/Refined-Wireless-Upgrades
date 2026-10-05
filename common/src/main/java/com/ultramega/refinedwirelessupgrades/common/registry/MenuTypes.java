@@ -4,9 +4,9 @@ import com.ultramega.refinedwirelessupgrades.common.menu.MagnetContainerMenu;
 import com.ultramega.refinedwirelessupgrades.common.menu.UpgradeContainerMenu;
 
 import java.util.function.Supplier;
-import javax.annotation.Nullable;
 
 import net.minecraft.world.inventory.MenuType;
+import org.jspecify.annotations.Nullable;
 
 import static java.util.Objects.requireNonNull;
 

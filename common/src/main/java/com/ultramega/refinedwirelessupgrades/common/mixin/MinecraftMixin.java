@@ -4,8 +4,6 @@ import com.ultramega.refinedwirelessupgrades.common.network.BlockPickerPayload;
 
 import com.refinedmods.refinedstorage.common.Platform;
 
-import javax.annotation.Nullable;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.MultiPlayerGameMode;
@@ -16,6 +14,7 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
+import org.jspecify.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -38,7 +37,7 @@ public class MinecraftMixin {
     @Nullable
     public HitResult hitResult;
 
-    @Inject(method = "pickBlock", at = @At("TAIL"), remap = false)
+    @Inject(method = "pickBlockOrEntity", at = @At("TAIL"), remap = false)
     private void wirelessUpgrades$pickBlock(final CallbackInfo ci) {
         if (this.player == null || this.level == null || this.gameMode == null
             || this.gameMode.getPlayerMode() != GameType.SURVIVAL || !(this.hitResult instanceof BlockHitResult blockHitResult)) {
