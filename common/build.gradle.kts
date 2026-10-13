@@ -42,6 +42,7 @@ val jeiVersion: String by project
 
 dependencies {
     api(libs.apiguardian)
+    compileOnly("io.github.llamalad7:mixinextras-common:0.5.5")
     api("com.refinedmods.refinedstorage:refinedstorage-common:${refinedstorageVersion}")
     api("com.refinedmods.refinedstorage:refinedstorage-quartz-arsenal-common:${refinedstorageQuartzArsenalVersion}")
 

@@ -15,6 +15,7 @@ import com.refinedmods.refinedstorage.common.support.resource.ItemResource;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.BiPredicate;
 
 import net.minecraft.core.HolderLookup;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -74,10 +75,10 @@ public final class MagnetUpgradeProcessor {
         return changed;
     }
 
-    public static boolean addPickedUpStack(final Inventory inventory, final ItemStack stack) {
+    public static boolean addPickedUpStack(final Inventory inventory, final ItemStack stack, final BiPredicate<Inventory, ItemStack> inventoryAdder) {
         final Pickup pickup = CURRENT_PICKUP.get();
         if (pickup == null || pickup.stack != stack || pickup.context.player().getInventory() != inventory) {
-            return inventory.add(stack);
+            return inventoryAdder.test(inventory, stack);
         }
         final WirelessGridUpgradeContext context = pickup.context;
         if (stack.isEmpty() || !context.networkItemContext().isActive() || !pickup.pickupFilter.isAllowed(ItemResource.ofItemStack(stack))) {
@@ -91,9 +92,10 @@ public final class MagnetUpgradeProcessor {
             stack.shrink(Math.clamp(inserted, 0, before));
         }
         // Rejected items and partial network insertions fall back to the inventory.
-        // Inventory.add mutates the remainder therefore any unaccepted items stay in the original entity and don't require special handling
+        // Continue the wrapped pickup operation so other mods' inventory handlers are preserved.
+        // Any unaccepted items stay in the original entity.
         if (!stack.isEmpty()) {
-            inventory.add(stack);
+            inventoryAdder.test(inventory, stack);
         }
         final boolean changed = stack.getCount() < before;
         if (changed) {
